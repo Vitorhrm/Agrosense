@@ -1,0 +1,10 @@
+/* Estilos de BottomNav. Padrões compartilhados estão em styles/shared.css. */
+.bottom-nav { position: absolute; z-index: 10; bottom: 0; left: 0; right: 0; height: 77px; display: flex; justify-content: space-around; align-items: start; padding: 10px 8px 8px; background: rgba(255,255,255,.97); border-top: 1px solid var(--line); backdrop-filter: blur(18px); }
+
+.bottom-nav button { flex: 1; display: flex; flex-direction: column; gap: 4px; align-items: center; background: transparent; color: #829089; font-size: 10px; font-weight: 600; }
+
+.nav-icon { height: 28px; min-width: 36px; display: grid; place-items: center; position: relative; border-radius: 10px; }
+
+.nav-icon i { position: absolute; top: -4px; right: 0; width: 16px; height: 16px; display: grid; place-items: center; border-radius: 50%; background: var(--red-500); color: white; border: 2px solid white; font: normal 700 8px "DM Sans"; }
+
+.bottom-nav { position: fixed; width: min(100%, 430px); left: 50%; right: auto; transform: translateX(-50%); }

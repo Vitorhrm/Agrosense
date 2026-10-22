@@ -1,0 +1,16 @@
+/* Estilos de Logo. Padrões compartilhados estão em styles/shared.css. */
+.logo { display: flex; align-items: center; gap: 12px; color: white; }
+
+.logo-mark { position: relative; width: 50px; height: 50px; display: grid; place-items: center; border-radius: 16px 16px 16px 5px; background: var(--leaf-500); color: white; box-shadow: 0 10px 22px rgba(69, 170, 114, .24); }
+
+.logo strong { display: block; font-size: 24px; letter-spacing: -.05em; }
+
+.logo > div:last-child span { display: block; opacity: .72; font-size: 11px; letter-spacing: .08em; }
+
+.logo-compact .logo-mark { width: 38px; height: 38px; border-radius: 12px 12px 12px 4px; box-shadow: none; }
+
+.signal { position: absolute; border: 1.5px solid rgba(255,255,255,.8); border-left-color: transparent; border-bottom-color: transparent; border-radius: 50%; transform: rotate(-16deg); }
+
+.signal-a { width: 10px; height: 10px; right: 5px; top: 5px; }
+
+.signal-b { width: 17px; height: 17px; right: 2px; top: 2px; }

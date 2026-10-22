@@ -1,0 +1,34 @@
+/* Estilos de StationScreen. Padrões compartilhados estão em styles/shared.css. */
+.offline-hero { display: flex; gap: 12px; align-items: center; padding: 15px; border-radius: 18px; background: var(--red-100); border: 1px solid #f4cac6; }
+
+.offline-hero > span { width: 50px; height: 50px; display: grid; place-items: center; flex: none; border-radius: 15px; color: white; background: var(--red-500); }
+
+.offline-hero h2 { font-size: 14px; color: #7d3029; margin-top: 5px; }
+
+.offline-hero p { color: #9c5b55; font-size: 9.5px; margin-top: 2px; }
+
+.station-location { display: flex; align-items: center; gap: 10px; margin: 12px 0; padding: 12px; border-radius: 15px; background: white; border: 1px solid var(--line); color: var(--forest-700); }
+
+.station-location > div { flex: 1; }
+
+.station-location span, .station-location strong { display: block; }
+
+.station-location span { color: var(--muted); font-size: 9px; }
+
+.station-location strong { font-size: 11px; margin-top: 2px; }
+
+.station-location button { width: 34px; height: 34px; display: grid; place-items: center; color: var(--forest-700); border-radius: 10px; background: var(--leaf-100); }
+
+.data-warning { display: flex; gap: 7px; align-items: start; margin-bottom: 11px; color: var(--amber-700); font-size: 9.5px; }
+
+.data-warning svg { flex: none; }
+
+.chart-card { margin-bottom: 11px; padding: 14px; border-radius: 18px; background: white; border: 1px solid var(--line); }
+
+.chart-card > div:first-child { display: grid; grid-template-columns: 1fr auto; align-items: baseline; }
+
+.chart-card > div:first-child > span { grid-column: 1; color: var(--muted); font: 700 9px "Manrope"; letter-spacing: .08em; }
+
+.chart-card > div:first-child strong { grid-column: 1; font-size: 18px; margin-top: 3px; }
+
+.chart-card > div:first-child small { grid-column: 2; grid-row: 2; color: var(--red-700); font-size: 9px; }

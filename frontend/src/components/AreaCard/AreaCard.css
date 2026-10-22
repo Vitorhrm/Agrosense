@@ -1,0 +1,36 @@
+/* Estilos de AreaCard. Padrões compartilhados estão em styles/shared.css. */
+.area-card { background: var(--surface); border-radius: 21px; padding: 15px; border: 1px solid #e4ebe7; box-shadow: var(--shadow-sm); cursor: pointer; }
+
+.area-card-head { display: flex; align-items: center; gap: 10px; }
+
+.area-title { flex: 1; }
+
+.area-title h3 { font-size: 15px; }
+
+.area-title p { color: var(--muted); font-size: 11px; margin-top: 2px; }
+
+.muted { color: #9aaaa2; }
+
+.status-row { display: flex; gap: 6px; margin: 11px 0; }
+
+.area-stats { display: grid; grid-template-columns: 1fr 1.2fr; gap: 18px; padding: 11px 0 13px; border-top: 1px solid #eef2f0; }
+
+.area-stats > div + div { border-left: 1px solid var(--line); padding-left: 17px; }
+
+.area-stats span, .area-stats p { display: block; color: var(--muted); font-size: 9.5px; }
+
+.area-stats strong { display: flex; align-items: baseline; gap: 7px; font-size: 22px; margin: 3px 0; }
+
+.area-stats strong small { display: inline-flex; gap: 3px; align-items: center; color: var(--sky-700); font: 700 10px "DM Sans"; }
+
+.progress { height: 5px; border-radius: 4px; background: #eaf0ed; overflow: hidden; }
+
+.progress i { height: 100%; display: block; background: var(--leaf-500); border-radius: 4px; }
+
+.recommend-strip { min-height: 54px; border-radius: 14px; padding: 10px 11px 10px 13px; display: flex; justify-content: space-between; align-items: center; }
+
+.recommend-strip span { display: block; font-size: 8.5px; font-weight: 600; opacity: .8; }
+
+.recommend-strip strong { display: block; font-size: 11px; margin-top: 2px; }
+
+.round-arrow { width: 29px; height: 29px; display: grid !important; place-items: center; border-radius: 50%; background: rgba(255,255,255,.68); }

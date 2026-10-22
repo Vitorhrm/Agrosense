@@ -1,0 +1,4 @@
+/* Estilos de NewArea. Padrões compartilhados estão em styles/shared.css. */
+.step-indicator { display: flex; gap: 6px; margin-bottom: 23px; }
+
+.step-indicator span { flex: 1; height: 4px; border-radius: 4px; background: #dfe7e3; }

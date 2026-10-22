@@ -1,0 +1,10 @@
+/* Estilos de Register. Padrões compartilhados estão em styles/shared.css. */
+.terms { text-align: center; color: var(--muted); font-size: 8.5px; line-height: 1.5; margin: 14px 18px 0; }
+
+.form-intro { text-align: center; margin: 7px 0 22px; }
+
+.intro-icon { width: 54px; height: 54px; margin: 0 auto 10px; display: grid; place-items: center; border-radius: 18px; color: white; background: var(--forest-800); }
+
+.form-intro h2 { font-size: 17px; }
+
+.form-intro p { color: var(--muted); font-size: 10px; margin-top: 3px; }

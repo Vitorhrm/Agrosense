@@ -1,50 +1,27 @@
 import java.util.Properties
 
-plugins {
-    alias(libs.plugins.android.application)
-}
+plugins { alias(libs.plugins.android.application) }
 
-val localProperties = Properties()
-val localPropertiesFile = rootProject.file("local.properties")
-if (localPropertiesFile.exists()) {
-    localPropertiesFile.inputStream().use { localProperties.load(it) }
+val localProperties = Properties().apply {
+    val file = rootProject.file("local.properties")
+    if (file.exists()) file.inputStream().use { load(it) }
 }
 
 android {
-    namespace = "com.example.irri"
-    compileSdk {
-        version = release(37)
-    }
-
+    namespace = "com.example.agrosense"
+    compileSdk { version = release(37) }
     defaultConfig {
-        applicationId = "com.example.irri"
+        applicationId = "com.example.agrosense"
         minSdk = 24
         targetSdk = 37
         versionCode = 1
         versionName = "1.0"
-
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        
-        buildConfigField("String", "SUPABASE_URL", "\"${localProperties.getProperty("SUPABASE_URL", "")}\"")
-        buildConfigField("String", "SUPABASE_ANON_KEY", "\"${localProperties.getProperty("SUPABASE_ANON_KEY", "")}\"")
-    }
-
-    buildTypes {
-        release {
-            optimization {
-                enable = true
-                packageScope = setOf("androidx.**", "kotlin.**", "kotlinx.**")
-            }
-        }
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
-    buildFeatures {
-        viewBinding = true
-        buildConfig = true
-    }
+    buildFeatures { buildConfig = true }
 }
 
 dependencies {
@@ -53,29 +30,19 @@ dependencies {
     implementation(libs.androidx.appcompat)
     implementation(libs.androidx.core.ktx)
     implementation(libs.material)
-    testImplementation(libs.junit)
-    androidTestImplementation(libs.androidx.espresso.core)
-    androidTestImplementation(libs.androidx.junit)
-
-    // Autenticação e consultas pelo controller Kotlin.
-    implementation(libs.supabase.auth)
-    implementation(libs.supabase.postgrest)
-    // Transporte HTTP usado pelo Supabase.
-    implementation(libs.ktor.android)
-    implementation(libs.ktor.core)
-    
 }
 
-
-// Compila o React antes de empacotar o APK, inclusive ao clicar em Run no Android Studio.
+// Run no Android Studio sempre verifica o TS e gera os assets atuais.
 val buildReactUi = tasks.register<Exec>("buildReactUi") {
     group = "build"
-    description = "Verifica TypeScript e atualiza a interface React do aplicativo."
+    description = "Verifica TypeScript e empacota a interface React."
     workingDir(rootProject.projectDir)
-    commandLine("powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", rootProject.file("Atualizar-Figma.ps1").absolutePath)
-    inputs.dir(rootProject.file("figma-ui/src"))
-    inputs.files(rootProject.file("figma-ui/package.json"), rootProject.file("figma-ui/pnpm-lock.yaml"), rootProject.file("figma-ui/tsconfig.json"), rootProject.file("figma-ui/vite.android.config.ts"), rootProject.file("figma-ui/index.html"), rootProject.file("Atualizar-Figma.ps1"))
+    commandLine(localProperties.getProperty("NODE_BINARY", "node"), "scripts/build-frontend.mjs")
+    inputs.dir(rootProject.file("frontend/src"))
+    inputs.files(rootProject.file("frontend/package.json"), rootProject.file("frontend/package-lock.json"), rootProject.file("frontend/tsconfig.json"), rootProject.file("frontend/vite.config.ts"), rootProject.file("frontend/vite.android.config.ts"), rootProject.file("frontend/index.html"), rootProject.file("frontend/.env.local"), rootProject.file("scripts/build-frontend.mjs"))
     outputs.dir(layout.projectDirectory.dir("src/main/assets/agrosense"))
 }
-tasks.configureEach { if (name.matches(Regex("merge.*Assets")) || name.contains("Lint") || name.startsWith("lint")) dependsOn(buildReactUi) }
+tasks.configureEach {
+    if (name.matches(Regex("merge.*Assets")) || name.contains("lint", ignoreCase = true)) dependsOn(buildReactUi)
+}
 

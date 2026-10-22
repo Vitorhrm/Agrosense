@@ -1,0 +1,6 @@
+/* Estilos de AppShell. Padrões compartilhados estão em styles/shared.css. */
+.app-shell { position: relative; width: min(100%, 430px); min-height: 100vh; margin: 0 auto; background: var(--background); box-shadow: 0 0 50px rgba(14, 70, 55, .12); overflow: hidden; }
+
+.app-content { min-height: 100vh; padding-bottom: 91px; }
+
+.app-content.no-nav { padding-bottom: 24px; }

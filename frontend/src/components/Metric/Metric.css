@@ -1,0 +1,8 @@
+/* Estilos de Metric. Padrões compartilhados estão em styles/shared.css. */
+.metric-card { display: grid; grid-template-columns: 34px 1fr; grid-template-rows: auto auto; align-items: center; padding: 11px; background: white; border-radius: 16px; border: 1px solid #e5ece8; }
+
+.metric-icon { grid-row: span 2; width: 31px; height: 31px; display: grid; place-items: center; border-radius: 10px; color: var(--forest-700); background: var(--leaf-100); }
+
+.metric-card > span:nth-child(2) { color: var(--muted); font-size: 8.5px; white-space: nowrap; }
+
+.metric-card strong { font-size: 13px; }

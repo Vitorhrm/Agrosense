@@ -1,0 +1,24 @@
+/* Estilos de RecommendationCard. Padrões compartilhados estão em styles/shared.css. */
+.recommend-card { margin-top: 15px; border-radius: 20px; padding: 15px; color: #754707; background: linear-gradient(145deg, #fff7e6, #ffebc6); border: 1px solid #f5d597; }
+
+.recommend-top { display: flex; align-items: center; gap: 11px; }
+
+.recommend-icon { width: 44px; height: 44px; display: grid; place-items: center; border-radius: 14px; color: white; background: var(--amber-500); }
+
+.recommend-top > div > span { color: #a56a17; }
+
+.recommend-top h3 { font-size: 16px; margin-top: 2px; }
+
+.recommend-card > p { margin: 12px 0; font-size: 11px; line-height: 1.5; color: #8a642c; }
+
+.recommend-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+
+.recommend-grid > div { padding: 9px; border-radius: 11px; background: rgba(255,255,255,.55); }
+
+.recommend-grid span { display: block; font-size: 8.5px; color: #a27739; }
+
+.recommend-grid strong { font-size: 12px; display: block; margin-top: 2px; }
+
+.reason { margin-top: 10px; display: flex; align-items: start; gap: 7px; padding-top: 10px; border-top: 1px solid #efd39d; font-size: 9.5px; line-height: 1.4; }
+
+.reason svg { flex: none; }

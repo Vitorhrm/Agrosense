@@ -1,0 +1,48 @@
+/* Estilos de AreaScreen. Padrões compartilhados estão em styles/shared.css. */
+.area-overview { display: flex; align-items: center; justify-content: space-between; padding: 14px; border-radius: 18px; color: white; background: var(--forest-900); box-shadow: var(--shadow); }
+
+.area-overview > div { display: flex; align-items: center; gap: 10px; }
+
+.area-overview .area-symbol { color: white; background: rgba(255,255,255,.12); }
+
+.area-overview strong { display: block; font-size: 13px; margin-top: 3px; }
+
+.weather-card { margin-top: 15px; padding: 16px; border-radius: 20px; color: white; background: linear-gradient(145deg, #176f98, #2e91bd); box-shadow: 0 10px 25px rgba(22,106,148,.2); cursor: pointer; }
+
+.weather-card-head { display: flex; justify-content: space-between; align-items: center; }
+
+.weather-card-head span { color: #c4e8f6; }
+
+.weather-card-head h3 { font-size: 14px; margin-top: 2px; }
+
+.weather-main { display: flex; align-items: center; gap: 15px; margin: 12px 0; }
+
+.weather-main > strong { font-size: 42px; letter-spacing: -.06em; }
+
+.weather-main > div { border-left: 1px solid rgba(255,255,255,.3); padding-left: 15px; }
+
+.weather-main b, .weather-main span { display: block; }
+
+.weather-main b { font-size: 11px; }
+
+.weather-main span { color: #d0ebf6; font-size: 9.5px; margin-top: 3px; }
+
+.location-note { display: flex; align-items: center; gap: 5px; padding: 7px 9px; border-radius: 9px; background: rgba(255,255,255,.1); color: #d8f0f8; font-size: 8.5px; }
+
+.station-list { display: flex; flex-direction: column; gap: 8px; }
+
+.station-card { width: 100%; display: grid; grid-template-columns: 38px 1fr auto; align-items: center; gap: 9px; text-align: left; padding: 11px; border-radius: 15px; background: white; border: 1px solid var(--line); }
+
+.station-status-icon { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 11px; color: var(--forest-700); background: var(--leaf-100); }
+
+.station-card > div:nth-child(2) strong, .station-card > div:nth-child(2) span, .station-card > div:nth-child(2) small { display: block; }
+
+.station-card > div:nth-child(2) strong { font-size: 11px; }
+
+.station-card > div:nth-child(2) span, .station-card > div:nth-child(2) small { color: var(--muted); font-size: 8.5px; margin-top: 2px; }
+
+.station-card > div:last-child { height: 44px; display: flex; flex-direction: column; align-items: end; justify-content: space-between; color: var(--muted); }
+
+.text-action { width: 100%; margin-top: 12px; padding: 13px; display: flex; align-items: center; gap: 9px; border-radius: 14px; color: var(--forest-700); background: var(--leaf-50); border: 1px solid #d8eade; }
+
+.text-action span { flex: 1; text-align: left; font-size: 11px; font-weight: 700; }

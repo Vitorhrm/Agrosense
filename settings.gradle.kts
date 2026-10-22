@@ -22,5 +22,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Irri"
+rootProject.name = "AgroSense"
 include(":app")

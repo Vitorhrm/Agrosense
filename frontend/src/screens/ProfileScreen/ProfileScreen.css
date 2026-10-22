@@ -1,0 +1,44 @@
+/* Estilos de ProfileScreen. Padrões compartilhados estão em styles/shared.css. */
+.profile-card { display: flex; align-items: center; gap: 12px; padding: 15px; border-radius: 19px; color: white; background: var(--forest-900); }
+
+.avatar { width: 54px; height: 54px; display: grid; place-items: center; flex: none; border-radius: 17px; color: var(--forest-900); background: #bcdfca; font: 800 17px "Manrope"; }
+
+.profile-card > div:nth-child(2) { flex: 1; }
+
+.profile-card h2 { font-size: 15px; }
+
+.profile-card p { color: #b8cfc5; font-size: 9.5px; margin: 2px 0 7px; }
+
+.profile-card button { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 10px; color: white; background: rgba(255,255,255,.1); }
+
+.profile-stats { display: grid; grid-template-columns: repeat(4,1fr); padding: 14px 0; margin: 12px 0; border-radius: 16px; background: white; border: 1px solid var(--line); }
+
+.profile-stats > div { text-align: center; border-right: 1px solid var(--line); }
+
+.profile-stats > div:last-child { border: 0; }
+
+.profile-stats strong, .profile-stats span { display: block; }
+
+.profile-stats strong { font-size: 15px; }
+
+.profile-stats span { color: var(--muted); font-size: 8.5px; margin-top: 2px; }
+
+.green-text { color: var(--forest-700); }
+
+.red-text { color: var(--red-700); }
+
+.menu-list { background: white; border: 1px solid var(--line); border-radius: 17px; overflow: hidden; }
+
+.menu-list button { width: 100%; display: flex; align-items: center; gap: 10px; padding: 12px; background: white; border-bottom: 1px solid #edf2ef; }
+
+.menu-list button:last-child { border: 0; }
+
+.menu-list button > span { width: 34px; height: 34px; display: grid; place-items: center; color: var(--forest-700); background: var(--leaf-50); border-radius: 10px; }
+
+.menu-list strong { flex: 1; text-align: left; font-size: 10.5px; }
+
+.menu-list > svg { color: var(--muted); }
+
+.logout-button { width: 100%; margin-top: 12px; padding: 13px; display: flex; align-items: center; justify-content: center; gap: 8px; color: var(--red-700); background: var(--red-100); border-radius: 14px; font-weight: 700; font-size: 11px; }
+
+.app-version { text-align: center; color: #9aa6a0; font-size: 8px; line-height: 1.6; margin-top: 19px; }
