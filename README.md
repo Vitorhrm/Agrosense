@@ -1,88 +1,158 @@
 # AgroSense
 
-Aplicativo acadêmico de monitoramento agrícola: **React + TypeScript**, executado no navegador e em uma WebView Android. O Kotlin se limita à `MainActivity`, responsável pela janela, pelos assets locais e pelo botão Voltar. Não há autenticação, tokens ou regras de negócio em Kotlin.
+Aplicativo acadêmico de monitoramento agrícola e apoio à irrigação, com interface em **React e TypeScript** e autenticação pelo **Supabase**. A mesma interface pode ser executada no navegador ou empacotada como aplicativo Android.
 
-## Estrutura
+## Tecnologias
+
+- React 19 e TypeScript para a interface e a lógica do aplicativo.
+- Vite 8 para desenvolvimento e geração dos arquivos de produção.
+- Supabase JS para cadastro, login e gerenciamento da sessão.
+- CSS organizado junto de cada tela e componente.
+- Vitest e Testing Library para testes automatizados; ESLint para análise estática.
+- Android WebView e uma Activity mínima em Kotlin para abrir a interface, ajustar a janela e tratar o botão Voltar.
+
+A autenticação e as regras do frontend ficam em TypeScript. O Kotlin está restrito à integração com o Android.
+
+## Funcionalidades e estado atual
+
+A autenticação implementa cadastro com nome e sobrenome, login por e-mail e senha, restauração e renovação de sessão, logout no dispositivo atual e proteção das telas privadas. Quando o Supabase exige confirmação de e-mail, o cadastro apresenta a orientação correspondente e aguarda uma sessão válida.
+
+A interface inclui início, áreas de cultivo, estações, clima, alertas, perfil, parâmetros de culturas e histórico. **Os dados agrícolas são de demonstração**, identificados na interface; ainda não são leituras de sensores nem registros persistidos no Supabase. Os formulários agrícolas e controles do protótipo não representam uma integração completa com o banco.
+
+Recuperação de senha, login social, integração com sensores e persistência dos dados agrícolas ainda não estão implementados.
+
+## Organização do projeto
 
 ```text
-frontend/
-  src/
-    app/                 composição da aplicação e proteção das telas
-    screens/             uma pasta por tela, com TSX e CSS adjacentes
-    components/          componentes reutilizáveis, com seu CSS
-    features/auth/       serviço, tipos, mensagens e testes da autenticação
-    lib/supabase.ts      instância única do cliente oficial
-    data/demo.ts         dados agrícolas fictícios, identificados na interface
-    styles/shared.css    fontes, cores, base e estilos realmente compartilhados
-    types/               tipos de navegação e ícones
-  tests/                 configuração dos testes de interface
-scripts/build-frontend.mjs
-app/src/main/java/com/example/agrosense/MainActivity.kt
+Agrosense/
+├── frontend/
+│   ├── src/
+│   │   ├── app/              Composição da aplicação e proteção das telas
+│   │   ├── screens/          Telas, cada uma com TSX e CSS na mesma pasta
+│   │   ├── components/       Componentes reutilizáveis e seus estilos
+│   │   ├── features/auth/    Serviço, tipos, mensagens e testes de autenticação
+│   │   ├── lib/              Cliente compartilhado do Supabase
+│   │   ├── data/             Dados agrícolas de demonstração
+│   │   ├── styles/           Fontes, cores e estilos compartilhados
+│   │   ├── fonts/            Fontes locais da interface
+│   │   └── types/            Tipos compartilhados
+│   ├── tests/                Configuração dos testes de interface
+│   ├── .env.example          Modelo da configuração pública do Supabase
+│   └── package.json          Dependências e comandos do frontend
+├── app/src/main/
+│   ├── java/com/example/agrosense/MainActivity.kt
+│   ├── assets/agrosense/     Interface gerada pelo build Android
+│   └── res/                  Recursos nativos do Android
+├── scripts/build-frontend.mjs
+└── gradle/                   Configuração da compilação Android
 ```
 
-Procure primeiro a tela em `screens`. Seu estilo fica no mesmo diretório. Extraia componentes quando houver reutilização ou uma responsabilidade clara; não transforme trechos pequenos e distintos em abstrações difíceis de acompanhar. Duplicação pontual é preferível a acoplar telas sem necessidade (WET); padrões compartilhados ficam em `components` e `styles` (DRY). Comentários explicam decisões e limites, em vez de repetir o código.
+Para alterar uma tela, procure sua pasta em `frontend/src/screens`: o componente e seu CSS ficam juntos. Componentes utilizados em mais de uma tela ficam em `components`; estilos realmente compartilhados ficam em `styles/shared.css`.
+
+A organização busca responsabilidades claras e reaproveitamento quando necessário (DRY), sem criar abstrações para toda pequena semelhança (WET). Comentários explicam decisões que ajudam a manutenção.
+
+## Requisitos
+
+- Node.js 22.12 ou superior, com npm.
+- Um projeto Supabase com autenticação por e-mail habilitada.
+- Para Android: Android Studio, SDK Android 37 e JDK compatível com o Gradle do projeto; prefira o JDK incluído no Android Studio.
+- Aparelho com Android 7.0/API 24 ou superior, ou emulador Android configurado.
+
+## Instalação e configuração
+
+Clone o repositório e instale as dependências:
+
+```sh
+git clone https://github.com/Vitorhrm/Agrosense.git
+cd Agrosense/frontend
+npm ci
+```
+
+Copie `frontend/.env.example` para `frontend/.env.local`. No PowerShell, dentro de `frontend`:
+
+```powershell
+Copy-Item .env.example .env.local
+```
+
+Preencha o arquivo com os dados públicos do seu projeto Supabase:
+
+```dotenv
+VITE_SUPABASE_URL=https://seu-projeto.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_sua_chave_publica
+```
+
+O arquivo `.env.local` e o `local.properties` não são enviados ao Git. As variáveis `VITE_` são incorporadas ao frontend compilado e são públicas: use somente a chave **publishable**, nunca `service_role`, `sb_secret_`, senha do banco ou credenciais administrativas.
+
+Depois de alterar a configuração, reinicie o servidor de desenvolvimento ou recompile o APK. A exigência de confirmação de e-mail depende da configuração do seu projeto Supabase; o aplicativo trata os dois casos.
 
 ## Executar no navegador
 
-Requisitos: Node.js 22.12+ com npm. Na pasta do projeto:
+Dentro de `frontend`:
 
 ```sh
-cd frontend
-npm ci
 npm run dev
 ```
 
-Abra a URL indicada pelo Vite (normalmente `http://127.0.0.1:5173`). Para gerar e conferir a versão de produção: `npm run build` e `npm run preview`.
+Abra [http://127.0.0.1:5173](http://127.0.0.1:5173). A porta é fixa; encerre outro processo que a esteja usando antes de iniciar o servidor.
 
-## Supabase
+Para gerar e conferir a versão de produção:
 
-A configuração deste computador já está em `frontend/.env.local`, ignorado pelo Git. Em outro computador, copie `.env.example` para `.env.local` e preencha a URL e a chave **publishable** do seu projeto. Reinicie o Vite ou recompile o APK depois de alterar o arquivo. Variáveis `VITE_` são públicas no aplicativo compilado: nunca use `service_role`, `sb_secret_`, senha do banco ou tokens administrativos aqui.
+```sh
+npm run build
+npm run preview
+```
 
-O serviço oficial implementa:
-
-- login por e-mail e senha;
-- cadastro com nome e sobrenome em `user_metadata.first_name/last_name`;
-- resposta de confirmação de e-mail quando exigida pelo provedor;
-- persistência e renovação de sessão pelo SDK;
-- atualização da UI quando a sessão é encerrada ou renovada;
-- logout somente no dispositivo atual;
-- bloqueio de telas privadas enquanto não existe sessão.
-
-O projeto Supabase conectado está com e-mail habilitado, cadastro permitido e confirmação automática de e-mail habilitada, conforme consulta em 22/10/2026. Nenhuma configuração remota foi alterada. O código também trata cadastro sem sessão, caso a confirmação passe a ser exigida.
-
-O SDK mantém a sessão no armazenamento da origem WebView/navegador. Não se armazenam senhas no código, nem se implementa manualmente renovação de tokens. As telas protegidas organizam a navegação; autorização de dados reais exige RLS e políticas no Supabase. Os dados agrícolas ainda são de demonstração, sem persistência no banco.
-
-O antigo botão “Esqueci minha senha” não executava ação e foi removido. Recuperação/alteração de senha requer uma URL de retorno válida e o fluxo correspondente, incluindo links profundos no Android; esse fluxo não foi implementado nesta entrega. Não há login social configurado.
+O build web é gerado em `frontend/dist`. O comando de prévia informa sua própria URL no terminal.
 
 ## Executar no Android
 
-Abra a raiz `Agrosense` no Android Studio e sincronize o Gradle. Execute `npm ci` em `frontend` uma vez; depois o botão Run verifica TypeScript e gera os assets automaticamente antes de empacotar o APK. A configuração antiga apontava para um script inexistente; agora usa `scripts/build-frontend.mjs`.
+1. Instale as dependências e configure o Supabase conforme as instruções anteriores.
+2. Abra a **raiz do repositório** no Android Studio e sincronize o Gradle.
+3. Selecione um aparelho ou emulador e clique em **Run**.
 
-```sh
-gradlew.bat :app:assembleDebug :app:lintDebug
+O Gradle executa `scripts/build-frontend.mjs`, verifica o TypeScript e gera os assets React antes de empacotar o aplicativo. Não edite manualmente `app/src/main/assets/agrosense`.
+
+Para compilar e analisar pelo PowerShell, na raiz do repositório:
+
+```powershell
+.\gradlew.bat :app:assembleDebug :app:lintDebug
 ```
 
-Use o JDK do Android Studio. O Gradle procura `node` no PATH; se necessário, defina `NODE_BINARY=C:/caminho/node.exe` no `local.properties`. Este computador já tem essa configuração local. O pacote Android é `com.example.agrosense`; o nome visível e o nome do projeto são **AgroSense**. Por mudar o identificador antigo `com.example.irri`, a instalação é um aplicativo separado e não migra a sessão do Irri.
+O APK fica em `app/build/outputs/apk/debug/app-debug.apk`.
 
-A WebView carrega somente assets da origem HTTPS local e bloqueia navegação externa. Chamadas HTTPS ao Supabase são feitas pelo SDK no TypeScript. O layout aplica margens das barras do sistema e do teclado; o contêiner é intencional.
+Se o Android Studio não encontrar o Node.js, adicione o caminho local em `local.properties`, preservando a configuração `sdk.dir` criada pelo Android Studio:
 
-## Verificação
-
-```sh
-cd frontend
-npm run typecheck
-npm run lint
-npm test
-npm run build
-npm run build:android
+```properties
+NODE_BINARY=C:/caminho/para/node.exe
 ```
 
-Testes verificam comportamento dos formulários, erros, validação, proteção por hash, expiração, restauração, logout e contrato com o SDK. São testes com respostas controladas; não criam contas nem enviam e-mails reais. Os 14 testes passaram. TypeScript e ESLint passaram. O APK de debug e o lint Android passaram, com zero erros e seis avisos: cinco versões de bibliotecas Android com atualização disponível e uma sugestão de layout que não se aplica ao contêiner usado para insets.
+O nome exibido é **AgroSense** e o identificador Android é `com.example.agrosense`. A instalação é separada do antigo `com.example.irri` e não migra sua sessão.
 
-Conexão real verificada: `/auth/v1/settings` respondeu HTTP 200 com a chave pública; uma tentativa controlada com credenciais fictícias respondeu HTTP 400 `invalid_credentials`. Isso confirma que a autenticação alcança o projeto correto, mas não substitui um login real com uma conta válida.
+## Comandos e testes
 
-Limitações da execução nesta sessão: o emulador padrão não iniciou por indisponibilidade de aceleração por hardware; a tentativa com emulação por software não chegou a disponibilizar dispositivo ADB. O ambiente de automação também bloqueou conexões locais com `EACCES`, impedindo a inspeção visual no navegador. Não foi possível confirmar a execução em aparelho/emulador nem realizar login real com sucesso. Nenhuma configuração de segurança do Windows foi alterada.
+Execute estes comandos dentro de `frontend`:
 
-## Manutenção
+| Comando | Finalidade |
+| --- | --- |
+| `npm run dev` | Iniciar o frontend em desenvolvimento |
+| `npm run typecheck` | Verificar os tipos do TypeScript |
+| `npm run lint` | Verificar o código com ESLint |
+| `npm test` | Executar os testes automatizados |
+| `npm run test:watch` | Reexecutar testes durante o desenvolvimento |
+| `npm run build` | Verificar tipos e gerar o build web |
+| `npm run preview` | Servir o build web para conferência |
+| `npm run build:android` | Verificar tipos e gerar os assets do APK |
+| `npm run format` | Formatar o código |
 
-Use `npm run format` para formatar. Mantenha `package-lock.json` e instale com `npm ci`; o lockfile antigo do pnpm foi removido. Adicione testes para mudanças de comportamento relevantes. Ao trocar a configuração pública do Supabase, refaça o build web/Android. A pasta de assets é gerada e não deve ser editada manualmente.
+A suíte atual contém 14 testes que cobrem formulários, validação, erros de autenticação, bloqueio de acesso por hash, restauração e expiração da sessão, logout e comunicação com o SDK. As respostas do Supabase são simuladas nesses testes; eles não criam contas nem enviam e-mails reais.
+
+Para uma validação manual completa, teste também cadastro e login no seu projeto Supabase, reabertura do aplicativo com sessão ativa, saída da conta e comportamento sem conexão. Testes automatizados e compilação não substituem essa conferência no navegador e no Android.
+
+## Cuidados de manutenção
+
+- Mantenha `package-lock.json` versionado e use `npm ci` para instalações reproduzíveis.
+- Centralize chamadas de autenticação em `features/auth/auth.service.ts` e reutilize o cliente de `lib/supabase.ts`.
+- O SDK gerencia persistência e renovação dos tokens; não armazene senhas nem replique essa lógica nas telas.
+- A proteção das telas controla a navegação. Ao integrar dados reais, configure RLS e políticas de autorização no Supabase.
+- Ao adicionar funcionalidades, atualize os testes de comportamento e a documentação.
+- Para implementar recuperação de senha, configure a URL de retorno e o fluxo de recuperação, incluindo links profundos no Android.
