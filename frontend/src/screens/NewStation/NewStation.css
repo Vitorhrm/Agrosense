@@ -1,8 +1,0 @@
-/* Estilos de NewStation. Padrões compartilhados estão em styles/shared.css. */
-.coordinate-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
-
-.map-placeholder { height: 115px; margin: 12px 0 15px; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 17px; color: var(--forest-700); background: radial-gradient(circle, #e6f2eb 1px, transparent 1px), #f1f6f3; background-size: 15px 15px; border: 1px solid #d7e4dd; }
-
-.map-placeholder span { font-size: 10px; font-weight: 700; margin-top: 5px; }
-
-.map-placeholder small { color: var(--muted); font-size: 8.5px; margin-top: 2px; }

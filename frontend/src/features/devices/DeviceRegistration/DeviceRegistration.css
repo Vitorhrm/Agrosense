@@ -1,0 +1,41 @@
+.device-registration { margin-bottom: 18px; }
+.device-panel { padding: 16px; border: 1px solid var(--line); border-radius: 20px; background: var(--surface); box-shadow: var(--shadow-sm); }
+.device-panel-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 14px; }
+.device-panel-heading > div { min-width: 0; }
+.device-panel-heading > div > span { font: 800 9px "Manrope"; color: var(--forest-700); letter-spacing: .08em; }
+.device-panel-heading h2 { font-size: 17px; line-height: 1.35; margin-top: 5px; }
+.device-panel-heading p { font-size: 11px; color: var(--muted); margin-top: 4px; overflow-wrap: anywhere; }
+.device-demo-note { display: flex; gap: 8px; padding: 11px; border-radius: 13px; background: var(--sky-100); color: var(--sky-700); }
+.device-demo-note > svg { flex: none; margin-top: 2px; }
+.device-demo-note p { font-size: 10px; line-height: 1.6; }
+.device-demo-note strong { display: block; font-size: 11px; }
+.device-options { display: grid; gap: 10px; margin-top: 15px; }
+.device-options > button, .device-results > button { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 72px; padding: 12px; border-radius: 14px; background: var(--leaf-50); border: 1px solid #d8eade; color: var(--forest-700); text-align: left; }
+.device-options button > span, .device-results button > span { flex: 1; min-width: 0; }
+.device-options strong, .device-results strong { display: block; font-size: 12px; overflow-wrap: anywhere; }
+.device-options small, .device-results small { display: block; font-size: 10px; color: var(--muted); margin-top: 5px; line-height: 1.5; }
+.device-options svg, .device-results svg { flex: none; }
+.device-steps { display: flex; gap: 8px; padding: 0; margin: 16px 0; list-style: none; }
+.device-steps li { flex: 1; border-top: 3px solid var(--line); padding-top: 7px; font-size: 10px; color: var(--muted); }
+.device-steps .current, .device-steps .complete { color: var(--forest-700); border-color: var(--leaf-500); }
+.device-stage { margin-top: 15px; }
+.device-stage h3 { font-size: 15px; margin-bottom: 7px; }
+.device-stage > p { font-size: 11px; color: var(--muted); line-height: 1.6; margin-bottom: 16px; }
+.device-stage > .button { margin-top: 4px; padding: 10px; font-size: 12px; }
+.device-results { margin-top: 16px; }
+.device-results > p { font-size: 10px; color: var(--muted); margin-bottom: 8px; }
+.device-back { display: block; margin: 15px auto 0; padding: 9px; background: transparent; color: var(--forest-700); font-size: 11px; font-weight: 700; }
+.device-selected { display: flex; align-items: center; gap: 7px; padding: 10px; margin-bottom: 15px; background: var(--leaf-100); color: var(--forest-700); border-radius: 10px; font-size: 10px; overflow-wrap: anywhere; }
+.device-selected svg { flex: none; }
+.device-networks { min-width: 0; padding: 0; border: 0; margin: 15px 0; }
+.device-networks legend { font-size: 10px; font-weight: 700; margin-bottom: 8px; }
+.device-networks label { display: flex; align-items: center; gap: 9px; min-height: 58px; padding: 11px; border: 1px solid var(--line); border-radius: 12px; margin-bottom: 8px; cursor: pointer; }
+.device-networks label:has(input:checked) { border-color: var(--forest-700); background: var(--leaf-50); }
+.device-networks input { accent-color: var(--forest-700); }
+.device-networks strong { display: block; font-size: 12px; }
+.device-networks small { display: block; font-size: 10px; color: var(--muted); margin-top: 3px; }
+.device-check { display: grid; place-items: center; width: 52px; height: 52px; border-radius: 16px; background: var(--leaf-100); color: var(--forest-700); margin-bottom: 12px; }
+.device-complete dl { padding: 12px; background: var(--background); border-radius: 12px; margin: 14px 0; }
+.device-complete dl > div + div { margin-top: 12px; }
+.device-complete dt { font-size: 10px; color: var(--muted); }
+.device-complete dd { margin: 3px 0 0; font-size: 12px; font-weight: 700; overflow-wrap: anywhere; }

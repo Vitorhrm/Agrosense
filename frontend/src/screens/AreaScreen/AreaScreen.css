@@ -46,3 +46,8 @@
 .text-action { width: 100%; margin-top: 12px; padding: 13px; display: flex; align-items: center; gap: 9px; border-radius: 14px; color: var(--forest-700); background: var(--leaf-50); border: 1px solid #d8eade; }
 
 .text-action span { flex: 1; text-align: left; font-size: 11px; font-weight: 700; }
+
+/* O rótulo não deve alterar o grid que centraliza o ícone da área. */
+.area-overview > div > div > span { display: block; color: #b8d2c7; font-size: 8.5px; letter-spacing: .08em; }
+.area-overview .area-symbol { display: grid; place-items: center; }
+.area-overview .area-symbol > svg { display: block; flex: none; }

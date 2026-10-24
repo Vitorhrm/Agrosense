@@ -6,15 +6,16 @@ import { Metric } from "../../components/Metric/Metric"
 import { RecommendationCard } from "../../components/RecommendationCard/RecommendationCard"
 import { HourlyForecast } from "../../components/HourlyForecast/HourlyForecast"
 import type { Screen } from "../../types/navigation"
-import { stations } from "../../data/demo"
+import { DeviceRegistration } from "../../features/devices/DeviceRegistration/DeviceRegistration"
+import { areas, stations } from "../../data/demo"
 import "./AreaScreen.css"
 
-export function AreaScreen({ go }: { go: (screen: Screen) => void }) {
+export function AreaScreen({ go, area }: { area: typeof areas[number], go: (screen: Screen) => void }) {
   return (
     <AppShell screen="area" go={go}>
       <TopBar
-        title="Talhão Norte"
-        subtitle="Milho · 3 estações"
+        title={area.name}
+        subtitle={`${area.crop} · ${area.stations} estações`}
         back
         onBack={() => go("areas")}
         action={
@@ -24,6 +25,7 @@ export function AreaScreen({ go }: { go: (screen: Screen) => void }) {
         }
       />
       <section className="page">
+        <DeviceRegistration areaName={area.name} />
         <div className="area-overview">
           <div>
             <span className="area-symbol">
@@ -58,7 +60,7 @@ export function AreaScreen({ go }: { go: (screen: Screen) => void }) {
           <div className="weather-card-head">
             <div>
               <span>CLIMA DESTA ÁREA</span>
-              <h3>Clima do Talhão Norte</h3>
+              <h3>Clima de {area.name}</h3>
             </div>
             <CloudRain size={31} />
           </div>
@@ -117,7 +119,7 @@ export function AreaScreen({ go }: { go: (screen: Screen) => void }) {
         </div>
         <button className="text-action" onClick={() => go("crop")}>
           <Leaf size={18} />
-          <span>Parâmetros da cultura: Milho</span>
+          <span>Parâmetros da cultura: {area.crop}</span>
           <ChevronRight size={18} />
         </button>
       </section>

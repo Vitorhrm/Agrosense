@@ -8,7 +8,7 @@ import type { AuthUser } from "../../features/auth/auth.types"
 import { areas } from "../../data/demo"
 import "./HomeScreen.css"
 
-export function HomeScreen({ go, user }: { go: (screen: Screen) => void, user: AuthUser | null }) {
+export function HomeScreen({ go, user, onOpenArea }: { onOpenArea: (name: string) => void, go: (screen: Screen) => void, user: AuthUser | null }) {
   return (
     <AppShell screen="home" go={go}>
       <TopBar title={`Olá, ${user?.firstName || 'Produtor'}`} subtitle="Hoje" />
@@ -46,7 +46,7 @@ export function HomeScreen({ go, user }: { go: (screen: Screen) => void, user: A
         </div>
         <div className="cards-stack">
           {areas.slice(0, 2).map((area) => (
-            <AreaCard key={area.name} area={area} open={() => go("area")} />
+            <AreaCard key={area.name} area={area} open={() => onOpenArea(area.name)} />
           ))}
         </div>
         <Button

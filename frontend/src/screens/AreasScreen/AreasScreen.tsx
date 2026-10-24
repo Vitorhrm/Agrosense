@@ -6,7 +6,7 @@ import type { Screen } from "../../types/navigation"
 import { areas } from "../../data/demo"
 import "./AreasScreen.css"
 
-export function AreasScreen({ go }: { go: (screen: Screen) => void }) {
+export function AreasScreen({ go, onOpenArea }: { onOpenArea: (name: string) => void, go: (screen: Screen) => void }) {
   return (
     <AppShell screen="areas" go={go}>
       <TopBar
@@ -26,7 +26,7 @@ export function AreasScreen({ go }: { go: (screen: Screen) => void }) {
         </div>
         <div className="cards-stack">
           {areas.map((area) => (
-            <AreaCard key={area.name} area={area} open={() => go("area")} />
+            <AreaCard key={area.name} area={area} open={() => onOpenArea(area.name)} />
           ))}
         </div>
       </section>

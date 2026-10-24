@@ -62,3 +62,19 @@ it("restaura sessão e faz logout no perfil", async () => {
   await waitFor(() => expect(window.location.hash).toBe("#login"))
 })
 
+
+it("mantém a área selecionada ao abrir o cadastro da estação", async () => {
+  mocks.subscribe.mockImplementation(callback => { callback(user); return vi.fn() })
+  render(<App />)
+  const actions = userEvent.setup()
+  await actions.click(await screen.findByRole("button", { name: "Áreas" }))
+  await actions.click(screen.getByRole("heading", { name: "Horta Leste" }))
+  expect(screen.getByRole("heading", { name: "Horta Leste" })).toBeInTheDocument()
+  await actions.click(screen.getByRole("button", { name: "Cadastrar dispositivo" }))
+  expect(screen.getByRole("region", { name: "Cadastro de dispositivo em Horta Leste" })).toBeInTheDocument()
+  await actions.click(screen.getByRole("button", { name: "Fechar cadastro" }))
+  await actions.click(screen.getByRole("button", { name: "Adicionar" }))
+  expect(screen.getByRole("region", { name: "Cadastro de dispositivo em Horta Leste" })).toBeInTheDocument()
+  expect(window.history.state.areaName).toBe("Horta Leste")
+})
+

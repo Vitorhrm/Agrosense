@@ -21,6 +21,19 @@ A interface inclui início, áreas de cultivo, estações, clima, alertas, perfi
 
 Recuperação de senha, login social, integração com sensores e persistência dos dados agrícolas ainda não estão implementados.
 
+## Cadastro de dispositivos (prévia)
+
+Dentro de cada área, o botão **Cadastrar dispositivo** abre duas opções:
+
+- **Cadastrar transmissor:** seleção de um ESP32 de exemplo por Bluetooth, preenchimento do SSID e senha do Wi-Fi e do identificador da rede LoRa.
+- **Cadastrar estação:** seleção de um ESP32 de exemplo por Bluetooth, definição do nome e escolha de um transmissor LoRa em uma lista simulada, com RSSI em dBm.
+
+O fluxo representa a futura comunicação: o celular conecta ao ESP32 por Bluetooth; no cadastro da estação, o próprio ESP32 faz o scan LoRa e devolve os resultados ao celular. RSSI é intensidade do sinal, enquanto o identificador LoRa distingue o transmissor/rede.
+
+**Esta etapa é somente uma prévia de interface.** Não solicita permissões Bluetooth, não descobre dispositivos reais, não envia configurações ao ESP32 e não salva cadastros no Supabase. Use dados fictícios. A senha permanece apenas no estado temporário do formulário e é descartada ao concluir, cancelar ou voltar à busca.
+
+O componente e seus estilos ficam em `frontend/src/features/devices/DeviceRegistration`; os dispositivos fictícios ficam em `provisioning.demo.ts`. A seleção de área é mantida durante a navegação para que o cadastro indique a área correta.
+
 ## Organização do projeto
 
 ```text
@@ -144,7 +157,7 @@ Execute estes comandos dentro de `frontend`:
 | `npm run build:android` | Verificar tipos e gerar os assets do APK |
 | `npm run format` | Formatar o código |
 
-A suíte atual contém 14 testes que cobrem formulários, validação, erros de autenticação, bloqueio de acesso por hash, restauração e expiração da sessão, logout e comunicação com o SDK. As respostas do Supabase são simuladas nesses testes; eles não criam contas nem enviam e-mails reais.
+A suíte atual contém 18 testes que cobrem formulários, validação, erros de autenticação, bloqueio de acesso por hash, restauração e expiração da sessão, logout e comunicação com o SDK. Também verificam as opções de dispositivos, os formulários de transmissor/estação, a seleção LoRa e o contexto da área. As respostas do Supabase são simuladas nesses testes; eles não criam contas nem enviam e-mails reais.
 
 Para uma validação manual completa, teste também cadastro e login no seu projeto Supabase, reabertura do aplicativo com sessão ativa, saída da conta e comportamento sem conexão. Testes automatizados e compilação não substituem essa conferência no navegador e no Android.
 

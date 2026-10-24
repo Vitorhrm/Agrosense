@@ -4,6 +4,7 @@ import type { AuthUser } from "../features/auth/auth.types"
 import { authService } from "../features/auth/auth.service"
 import { errorMessage } from "../features/auth/auth.errors"
 import "./App.css"
+import { areas } from "../data/demo"
 import { WeatherScreen } from "../screens/WeatherScreen/WeatherScreen"
 import { HistoryScreen } from "../screens/HistoryScreen/HistoryScreen"
 import { Register } from "../screens/Register/Register"
@@ -23,14 +24,15 @@ const allowedScreens: Screen[] = ["login", "register", "home", "areas", "area", 
 const isPublicScreen = (screen: Screen) => screen === "login" || screen === "register"
 
 export default function App() {
+  const [selectedArea, setSelectedArea] = useState(() => areas.find(area => area.name === window.history.state?.areaName) ?? areas[0])
   const [screen, setScreen] = useState<Screen>("login")
   const [user, setUser] = useState<AuthUser | null>(null)
   const [loading, setLoading] = useState(true)
   const [sessionError, setSessionError] = useState("")
 
-  const navigate = (next: Screen, replace = false) => {
-    if (replace) window.history.replaceState(null, "", `#${next}`)
-    else window.history.pushState({ screen: next }, "", `#${next}`)
+  const navigate = (next: Screen, replace = false, areaName = selectedArea.name) => {
+    if (replace) window.history.replaceState({ screen: next, areaName }, "", `#${next}`)
+    else window.history.pushState({ screen: next, areaName }, "", `#${next}`)
     setScreen(next)
     window.scrollTo({ top: 0, behavior: "smooth" })
   }
@@ -53,7 +55,9 @@ export default function App() {
       const hash = window.location.hash.slice(1)
       const requested = allowedScreens.find(item => item === hash) || (user ? "home" : "login")
       const safe = !user && !isPublicScreen(requested) ? "login" : user && isPublicScreen(requested) ? "home" : requested
-      navigate(safe, true)
+      const area = areas.find(item => item.name === window.history.state?.areaName) ?? areas[0]
+      setSelectedArea(area)
+      navigate(safe, true, area.name)
     }
     update()
     window.addEventListener("popstate", update)
@@ -62,6 +66,11 @@ export default function App() {
   }, [user, loading])
 
   const go = (next: Screen) => navigate(!user && !isPublicScreen(next) ? "login" : user && isPublicScreen(next) ? "home" : next)
+  const openArea = (name: string) => {
+    const area = areas.find(item => item.name === name) ?? areas[0]
+    setSelectedArea(area)
+    navigate("area", false, area.name)
+  }
   const handleLogin = (newUser: AuthUser) => { setSessionError(""); setUser(newUser); navigate("home", true) }
   const handleLogout = () => { setUser(null); navigate("login", true) }
   if (loading) return <div className="session-loading">Carregando...</div>
@@ -69,16 +78,16 @@ export default function App() {
   const screens: Record<Screen, ReactNode> = {
     login: <Login go={go} onLogin={handleLogin} />,
     register: <Register go={go} onLogin={handleLogin} />,
-    home: <HomeScreen go={go} user={user} />,
-    areas: <AreasScreen go={go} />,
-    area: <AreaScreen go={go} />,
+    home: <HomeScreen go={go} user={user} onOpenArea={openArea} />,
+    areas: <AreasScreen go={go} onOpenArea={openArea} />,
+    area: <AreaScreen key={selectedArea.name} go={go} area={selectedArea} />,
     station: <StationScreen go={go} />,
     weather: <WeatherScreen go={go} />,
     "weather-detail": <WeatherDetail go={go} />,
     alerts: <AlertsScreen go={go} />,
     profile: <ProfileScreen go={go} user={user} onLogout={handleLogout} />,
     "new-area": <NewArea go={go} />,
-    "new-station": <NewStation go={go} />,
+    "new-station": <NewStation go={go} areaName={selectedArea.name} />,
     crop: <CropScreen go={go} />,
     history: <HistoryScreen go={go} />,
   }
