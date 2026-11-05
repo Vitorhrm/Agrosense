@@ -167,3 +167,49 @@ teste fisico com os dois ESP32 e os modems reais. Nenhum firmware foi gravado
 automaticamente nesta revisao.
 
 Manual AHT20: https://cdn-learn.adafruit.com/assets/assets/000/091/676/original/AHT20-datasheet-2020-4-16.pdf
+
+ATUALIZACAO — SENSOR DE SOLO NO GPIO34
+SOIL_SENSOR_ENABLED agora esta true. A leitura soil_raw e a media de 16 amostras
+ADC de 12 bits no GPIO34, com atenuacao de 11 dB. O valor ainda nao e percentual.
+O firmware foi compilado, mas a gravacao no transmissor COM6 nao foi concluida
+por falha de sincronizacao USB/serial. Portanto, ainda nao ha leitura fisica do
+solo confirmada nem entrega dessa leitura ao receptor.
+O receptor COM5 foi gravado e confirmou a configuracao LoRa/RSSI na bancada.
+Consultas AT deste modem respondem somente o valor, sem OK adicional. O codigo
+agora aceita esse comportamento; AT e comandos de escrita continuam exigindo OK.
+
+
+ATUALIZACAO — TELEMETRIA WI-FI E PAINEL
+A coleta real informada pelo usuario confirmou AHT20, BMP280 e solo no GPIO34,
+com soil_raw=3282 e sinal Muito proximo no receptor. Isso substitui a limitacao
+de validacao fisica descrita na atualizacao anterior.
+O transmissor continua enviando somente pelo LoRa e nao precisa de internet.
+O receptor acrescenta signal por station, imprime o JSON e o copia para uma
+fila de envio HTTPS ao painel Vercel. O UUID event_id evita duplicatas nas
+retentativas. O worker de rede roda separado do loop de recepcao.
+
+Wi-Fi: configure WIFI_SSID e WIFI_PASSWORD em Receptor/WifiConfig.local.h.
+O ESP32 classico requer 2,4 GHz; a senha nunca e impressa no Serial.
+Reconexao a cada 30 segundos, sem espera longa no loop LoRa.
+URL e token: Receptor/CloudConfig.local.h; use o mesmo INGEST_TOKEN da Vercel.
+Esses dois arquivos locais nao entram no Git. Chaves NVIDIA e Supabase ficam
+somente no servidor. A falta de rede nao impede LoRa e Serial.
+
+HTTPS valida o certificado com as autoridades do core ESP32 e usa hora NTP.
+A fila em RAM comporta 12 coletas alem da coleta em processamento. Ao lotar,
+novas coletas ficam somente no Serial; reiniciar perde a fila. Ate tres
+tentativas por coleta, descartando erros permanentes 4xx. Nao ha buffer em flash.
+Mensagem Nuvem: coleta entregue confirma que a API aceitou a coleta.
+
+Painel: https://agrosense-lab-vitor-f35a.vercel.app
+Banco: projeto AgroSense no Supabase, separado do APP original.
+Graficos por station e resumo manual das ultimas 120 coletas via NVIDIA
+nvidia/nemotron-3.5-bolt-e4b. Solo e ADC bruto; nao e percentual nem recomenda
+irrigacao sem calibracao. O nome do sinal e RSSI LoRa, nao sinal Wi-Fi.
+Guia completo de configuracao: backend/README.md.
+
+VALIDACAO FISICA — 05/11/2026
+Firmware Wi-Fi/HTTPS gravado com sucesso no receptor COM5.
+Conexao ao roteador Galaxy S23 confirmada pelo Serial e pelo usuario.
+Coletas reais da station1 foram recebidas pela API e persistidas no Supabase,
+com a confirmacao Nuvem: coleta entregue e exibicao no painel publicado.

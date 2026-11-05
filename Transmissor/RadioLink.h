@@ -163,7 +163,7 @@ class RadioLink {
     return response;
   }
 
-  // Envia um comando e verifica sua resposta antes de avancar.
+  // Consultas respondem com o valor; AT e comandos de escrita precisam de OK.
   bool command(const char* text, const char* expected) {
     while (serial.available()) serial.read();
     serial.print(text);
@@ -171,7 +171,8 @@ class RadioLink {
     serial.flush();
     const String response = readResponse(1500);
     printResponse(text, response);
-    if (hasLine(response, expected) && hasLine(response, "OK") &&
+    const bool requiresOk = strcmp(expected, "OK") == 0; // Firmware real omite OK nas consultas.
+    if (hasLine(response, expected) && (!requiresOk || hasLine(response, "OK")) &&
         response.indexOf("ERROR") < 0 && response.indexOf("EEROR") < 0) return true;
     Serial.print("Resposta esperada nao confirmada: "); Serial.println(text);
     return false;

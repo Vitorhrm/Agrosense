@@ -1,0 +1,22 @@
+{
+  "name": "agrosense-telemetry",
+  "version": "1.0.0",
+  "description": "API, painel de telemetria e resumos NVIDIA do AgroSense",
+  "main": "index.js",
+  "scripts": {
+    "dev": "node --env-file-if-exists=.env.local scripts/dev.js",
+    "check": "node --check api/index.js",
+    "test": "node --test"
+  },
+  "keywords": [],
+  "type": "module",
+  "dependencies": {
+    "@ai-sdk/openai-compatible": "3.0.85",
+    "@supabase/supabase-js": "2.119.0",
+    "ai": "7.0.163"
+  },
+  "private": true,
+  "engines": {
+    "node": ">=22.12.0"
+  }
+}

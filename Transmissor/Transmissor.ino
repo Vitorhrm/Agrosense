@@ -2,7 +2,7 @@
 // Tempo entre inicios de coleta e envio: 10000 ms = 10 segundos.
 constexpr uint32_t COLLECTION_INTERVAL_MS = 10000;
 constexpr char NODE_ID[] = "station1"; // Nome UNICO por station: station1, station2 etc.
-constexpr bool SOIL_SENSOR_ENABLED = false; // Ative depois de conectar o sensor de solo.
+constexpr bool SOIL_SENSOR_ENABLED = true; // Sensor de solo conectado ao GPIO34.
 constexpr int SOIL_ANALOG_PIN = 34; // Entrada analogica AO do sensor de solo.
 constexpr int I2C_SDA_PIN = 21; // SDA do modulo AHT20 + BMP280.
 constexpr int I2C_SCL_PIN = 22; // SCL do modulo AHT20 + BMP280.
@@ -45,6 +45,10 @@ void setup() {
   Serial.begin(115200);
   radioReady = radio.begin(LORA_RX_PIN, LORA_TX_PIN, LORA_BAUD_RATE, false);
   sensors.begin(I2C_SDA_PIN, I2C_SCL_PIN);
+  if (SOIL_SENSOR_ENABLED) {
+    pinMode(SOIL_ANALOG_PIN, INPUT); // GPIO34 nao possui pull-up/pull-down interno.
+    analogSetPinAttenuation(SOIL_ANALOG_PIN, ADC_11db); // Faixa ADC adequada a saida analogica em 3,3 V.
+  }
   Serial.println(radioReady ? "Station pronta. Classificacao do sinal e feita no receptor."
       : "ERRO: modem sem configuracao confirmada. Confira ligacoes/baud e reinicie.");
 }

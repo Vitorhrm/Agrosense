@@ -2,9 +2,9 @@
 
 **Sistema acadêmico de monitoramento agrícola e apoio à decisão de irrigação**, desenvolvido como Trabalho de Conclusão de Curso do Bacharelado em Sistemas de Informação do IFMG.
 
-Este repositório reúne o projeto completo: o aplicativo web/Android, o firmware das estações de coleta, o firmware do receptor LoRa e o espaço destinado ao backend. O objetivo é integrar medições ambientais e do solo a uma interface que ajude a acompanhar as condições do cultivo.
+Este repositório reúne o projeto completo: o aplicativo web/Android, o firmware das estações de coleta, o firmware do receptor LoRa e a API com painel de telemetria. O objetivo é integrar medições ambientais e do solo a uma interface que ajude a acompanhar as condições do cultivo.
 
-> **Em desenvolvimento.** O aplicativo já possui autenticação pelo Supabase, mas as informações agrícolas exibidas ainda são demonstrativas. Os firmwares implementam coleta e recepção por LoRa; a comunicação precisa ser validada na bancada. O backend próprio e a integração das medições com o aplicativo ainda não estão implementados.
+> **Em desenvolvimento.** O aplicativo já possui autenticação pelo Supabase, mas as informações agrícolas exibidas ainda são demonstrativas. A coleta e a recepção LoRa foram confirmadas na bancada, incluindo solo no GPIO34. A API e o painel experimental estão publicados na Vercel; o receptor agora implementa Wi-Fi/HTTPS. A integração com o aplicativo original em APP ainda está pendente.
 
 ## Conteúdo
 
@@ -31,9 +31,9 @@ Este repositório reúne o projeto completo: o aplicativo web/Android, o firmwar
 | Parte | Responsabilidade | Estado atual |
 | --- | --- | --- |
 | `APP` | Interface web e Android, autenticação e visualização | Cadastro/login reais pelo Supabase; telas agrícolas com dados demonstrativos |
-| `Transmissor` | Estação ESP32 que lê sensores e envia JSON pelo LoRa | Coleta AHT20/BMP280 e prevê leitura analógica do solo; firmware com compilação verificada |
-| `Receptor` | ESP32 que recebe as coletas e avalia o RSSI de cada estação | Acrescenta a classificação do sinal ao JSON mostrado no Monitor Serial; firmware com compilação verificada |
-| `backend` | Futura integração entre dispositivos, persistência e aplicativo | Pasta criada com documentação; sem servidor ou API próprios implementados |
+| `Transmissor` | Estação ESP32 que lê sensores e envia JSON pelo LoRa | Coleta AHT20/BMP280 e solo no GPIO34; recebimento físico confirmado |
+| `Receptor` | ESP32 que recebe as coletas e avalia o RSSI de cada estação | Classifica RSSI por estação, imprime no Serial e encaminha por Wi-Fi/HTTPS quando configurado |
+| `backend` | API HTTPS, histórico Supabase e painel experimental | Publicado na Vercel, com resumo NVIDIA solicitado pelo usuário |
 | Supabase | Serviço externo de autenticação usado pelo aplicativo | Integração implementada; depende da configuração do projeto do usuário |
 
 O protótipo não aciona bombas ou válvulas. As recomendações agrícolas e os dados de clima apresentados na interface ainda não representam um processamento de leituras reais. O fluxo Bluetooth de cadastro de dispositivos é uma prévia de interface, sem descoberta, provisionamento ou gravação reais.
@@ -44,15 +44,17 @@ O protótipo não aciona bombas ou válvulas. As recomendações agrícolas e os
 
 ```mermaid
 flowchart LR
-    Sensors["AHT20 + BMP280 + solo previsto"] --> Station["Estação ESP32 · Transmissor"]
+    Sensors["AHT20 + BMP280 + solo GPIO34"] --> Station["Estação ESP32 · Transmissor"]
     Station -->|"JSON via LoRa"| Receiver["ESP32 · Receptor"]
     Receiver -->|"JSON + nome do sinal"| Serial["Monitor Serial USB"]
-    Receiver -. "Integração futura" .-> Backend["backend · planejado"]
+    Receiver -->|"Wi-Fi / HTTPS"| Backend["API Vercel + painel Lab"]
+    Backend --> Database["Supabase · histórico"]
+    Backend --> Nvidia["NVIDIA · resumo manual"]
     Backend -. "API / persistência futuras" .-> App["APP · web / Android"]
     App -->|"Autenticação implementada"| Supabase["Supabase Auth"]
 ```
 
-As setas tracejadas representam trabalho futuro. Hoje, o receptor apresenta as leituras localmente no Monitor Serial e não as encaminha ao aplicativo ou a um servidor. O aplicativo consulta seu serviço de autenticação, mas continua usando dados agrícolas de demonstração.
+A seta tracejada até APP representa a integração futura do aplicativo original. O painel Lab já consulta a API de telemetria. Configure o Wi-Fi do receptor e grave o novo firmware para encaminhar as coletas.
 
 ## Organização do repositório
 
@@ -86,7 +88,7 @@ Agrosense/
 │   ├── RadioLink.h                   Transporte UART e extração do RSSI
 │   └── COMO-FUNCIONA-RECEPTOR.txt
 ├── backend/
-│   └── README.md                    Escopo e estado do futuro backend
+│   └── README.md                    API, painel, configuração e testes
 └── RSSI-LEIA-ME.md                   Detalhes do protocolo e da escala de sinal
 ```
 
@@ -102,7 +104,7 @@ O projeto Android completo fica dentro de `APP`, incluindo a subpasta `APP/app`.
 | Testes do aplicativo | Vitest, Testing Library, TypeScript e ESLint |
 | Dispositivos | ESP32 com framework Arduino |
 | Rádio | DX-LR32-900T22D, comunicação UART e modo transparente |
-| Sensores | AHT20, BMP280 e sensor capacitivo de solo previsto |
+| Sensores | AHT20, BMP280 e sensor capacitivo de solo no GPIO34 |
 | Mensagens | JSON, com ArduinoJson 7 no firmware |
 | Backend próprio | Tecnologia ainda não definida |
 
@@ -219,7 +221,7 @@ NODE_BINARY=C:/caminho/para/node.exe
 - Dois ESP32 clássicos compatíveis com a configuração `ESP32 Dev Module`.
 - Dois módulos LoRa **DX-LR32-900T22D**, com antenas compatíveis.
 - Um módulo combinado AHT20 + BMP280, conectado ao transmissor.
-- Um sensor capacitivo de umidade do solo, previsto no código e inicialmente desativado.
+- Um sensor capacitivo de umidade do solo conectado ao GPIO34 e habilitado.
 - Cabos e alimentação adequados aos módulos.
 
 ### Ligações de dados
@@ -257,7 +259,7 @@ No início de `Transmissor/Transmissor.ino`:
 ```cpp
 constexpr uint32_t COLLECTION_INTERVAL_MS = 10000;
 constexpr char NODE_ID[] = "station1";
-constexpr bool SOIL_SENSOR_ENABLED = false;
+constexpr bool SOIL_SENSOR_ENABLED = true;
 ```
 
 | Variável | Significado |
@@ -320,7 +322,7 @@ Exemplo ilustrativo, sem representar uma leitura real:
 
 Falhas ou leituras ambientais inválidas são representadas por `null`. O solo desativado usa zero conforme a regra do protótipo; esse zero não significa solo seco. A entrada analógica desconectada pode produzir valores arbitrários, por isso a ativação é manual. Um percentual de umidade do solo exige calibração seco/molhado com o sensor e o solo utilizados.
 
-`uptime_ms` e `seq` não identificam sozinhos uma sessão permanente: reinícios e o ciclo dos contadores devem ser considerados ao implementar persistência e deduplicação no backend.
+`uptime_ms` e `seq` reiniciam com o dispositivo. Para HTTPS, o receptor acrescenta um UUID `event_id` mantido nas retentativas; o banco usa esse UUID para evitar duplicatas.
 
 ### Transporte e saída do receptor
 
@@ -354,19 +356,11 @@ Cada JSON associa o sinal ao seu `node`; o RSSI de uma estação não é reutili
 
 ## Backend e Supabase
 
-A pasta [`backend`](backend/README.md) reserva o lugar da futura API/serviço de integração. **Ainda não existe código de servidor, banco agrícola versionado ou endpoint de ingestão nessa pasta.** A escolha da tecnologia será feita na implementação dessa camada.
+O [backend e painel Lab](backend/README.md) recebem coletas por HTTPS, armazenam no projeto Supabase AgroSense e mostram gráficos por estação. A IA NVIDIA gera resumos das últimas 120 coletas mediante solicitação, com intervalo mínimo de um minuto.
 
-O Supabase já é utilizado pelo aplicativo para cadastro, login, sessão e logout. Isso não significa que as medições dos ESP32 já estejam persistidas ou associadas a usuários. O receptor atual também não implementa encaminhamento Wi-Fi/HTTP.
+**Acessar:** https://agrosense-lab-vitor-f35a.vercel.app
 
-Para integrar as partes, ainda será necessário definir:
-
-- como o receptor encaminhará as coletas;
-- contrato de ingestão e identidade dos dispositivos;
-- armazenamento, horário de recebimento e tratamento de reinícios/duplicatas;
-- associação entre usuário, área e estação;
-- autenticação e autorização dos dispositivos e usuários;
-- políticas de acesso, caso os dados agrícolas sejam mantidos no Supabase;
-- consultas utilizadas pelo aplicativo e atualização das telas com dados reais.
+Configure `Receptor/WifiConfig.local.h` e `Receptor/CloudConfig.local.h` conforme o guia do backend. Esses arquivos são privados e ignorados pelo Git. O painel usa senha única nesta fase. A integração com usuários, áreas e telas do aplicativo original ainda é futura.
 
 ## Testes e validação
 
@@ -438,7 +432,8 @@ Foi observado durante o desenvolvimento um erro de ausência de confirmação AT
 - [ ] Validar a configuração AT e a comunicação real dos módulos LoRa.
 - [ ] Conectar e calibrar o sensor de solo.
 - [ ] Testar estabilidade, perdas e colisões com múltiplas estações.
-- [ ] Definir e implementar o backend e o armazenamento agrícola.
+- [x] Implementar API de ingestão, armazenamento Supabase e painel experimental.
+- [ ] Integrar a API às telas do aplicativo original e ao cadastro de áreas/usuários.
 - [ ] Implementar o encaminhamento das coletas pelo receptor.
 - [ ] Vincular dispositivos e áreas a usuários com autorização adequada.
 - [ ] Substituir os dados demonstrativos do aplicativo por dados reais.

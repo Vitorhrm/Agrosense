@@ -2,6 +2,8 @@
 #include <ArduinoJson.h>
 #include <math.h>
 #include "RadioLink.h"
+#include "ReceiverWifi.h"
+#include "CloudUploader.h"
 
 constexpr int LORA_RX_PIN = 16; // Recebe do TX do LoRa.
 constexpr int LORA_TX_PIN = 17; // Envia ao RX do LoRa.
@@ -9,6 +11,8 @@ constexpr uint32_t LORA_BAUD_RATE = 9600; // Baud configurado na UART do modem l
 HardwareSerial loraSerial(2); // UART dedicada ao modem.
 RadioLink radio(loraSerial); // Transporte que separa JSON do byte binario de RSSI.
 bool radioReady = false; // Evita interpretar bytes sem configuracao RSSI confirmada.
+ReceiverWifi receiverWifi; // Gerencia a conexao ao roteador sem esperar no loop LoRa.
+CloudUploader cloudUploader; // Envia coletas validadas em uma tarefa separada.
 
 // Aplica exatamente os limites pedidos, sem media, SNR ou percentual de entrega.
 const char* classifySignal(int rssiDbm) {
@@ -47,11 +51,14 @@ void handleCollection(JsonDocument& message, int rssiDbm) {
   if (message.overflowed()) { Serial.println("ERRO: memoria insuficiente para o JSON."); return; }
   serializeJson(message, Serial); // Exemplo: {"node":"station1",...,"signal":"Bom"}
   Serial.println();
+  cloudUploader.enqueue(message); // Copia o JSON com a classificacao desta station para envio HTTPS.
 }
 
 // Habilita RSSI anexado no receptor e verifica a resposta AT antes de receber coletas.
 void setup() {
   Serial.begin(115200);
+  receiverWifi.begin(); // SSID e senha ficam em WifiConfig.local.h.
+  cloudUploader.begin(); // Token e URL ficam em CloudConfig.local.h, separado das chaves da IA.
   radioReady = radio.begin(LORA_RX_PIN, LORA_TX_PIN, LORA_BAUD_RATE, true);
   Serial.println(radioReady ? "Receptor pronto. RSSI classificado por station. Serial: 115200."
       : "ERRO: modem sem configuracao RSSI confirmada. Confira ligacoes/baud e reinicie.");
@@ -79,6 +86,7 @@ void diagnoseModem() {
 
 // Cada mensagem tem seu RSSI e identificador; nao mistura valores entre stations.
 void loop() {
+  receiverWifi.update(); // Reconecta mesmo quando o radio esta em diagnostico.
   if (!radioReady) { diagnoseModem(); delay(1); return; }
   JsonDocument message; // Coleta recebida da station.
   int receivedRssi = 0; // Valor interno em dBm, nao incluido no JSON de saida.
