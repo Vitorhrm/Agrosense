@@ -1,31 +1,33 @@
-*.iml
-.gradle
-/local.properties
-/.idea/caches
-/.idea/libraries
-/.idea/modules.xml
-/.idea/workspace.xml
-/.idea/navEditor.xml
-/.idea/assetWizardSettings.xml
-.DS_Store
-/build
-/captures
-.externalNativeBuild
-.cxx
-local.properties
-
-/tools/typescript/node_modules/
-
-# Dependencias, caches e arquivos locais
+# Dependencias e builds locais, em qualquer componente
 **/node_modules/
 **/build/
-.kotlin/
-.idea/
 **/dist/
+**/.gradle/
+**/.kotlin/
+**/.idea/
+**/.cxx/
+**/.externalNativeBuild/
+**/captures/
+**/coverage/
+*.iml
+*.log
+.DS_Store
+Thumbs.db
+
+# Configuracoes locais, credenciais e assinaturas
 .env
 .env.*
+**/.env
+**/.env.*
 !.env.example
+!**/.env.example
+local.properties
+**/local.properties
 *.jks
 *.keystore
-*.log
 
+# Artefatos e ambiente virtual do futuro backend
+**/__pycache__/
+**/.venv/
+**/venv/
+*.pyc

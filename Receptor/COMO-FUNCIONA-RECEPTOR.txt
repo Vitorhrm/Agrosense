@@ -1,0 +1,169 @@
+FUNCIONAMENTO DO RECEPTOR — PROJETO TCC
+=====================================
+
+1. OBJETIVO
+
+O receptor utiliza um ESP32 e um módulo LoRa DX-LR32-900T22D para receber as
+coletas ambientais de uma ou mais stations. Ele interpreta o JSON, identifica
+a station pelo campo node e calcula uma classificação do sinal a partir do
+RSSI medido pelo seu próprio rádio naquele pacote.
+
+Depois, acrescenta o campo signal e imprime o JSON completo no Monitor Serial.
+Somente o nome da classificação aparece no JSON; os valores numéricos de
+dBm e dB não são incluídos. Não há cálculo de SNR nem de taxa de entrega.
+
+2. COMPONENTES E LIGAÇÕES
+
+- ESP32 clássico, compatível com ESP32 Dev Module.
+- Módulo LoRa DX-LR32-900T22D com antena e alimentação estável.
+- Cabo USB para alimentação/programação e visualização do Monitor Serial.
+
+GPIO16 (RX2 do ESP32) -> TX do módulo LoRa.
+GPIO17 (TX2 do ESP32) -> RX do módulo LoRa.
+GND                 -> GND comum do ESP32 e do módulo LoRa.
+
+O receptor não precisa dos sensores AHT20/BMP280 ou do sensor de solo.
+Os dados desses sensores são recebidos das stations pelo rádio.
+A lógica UART deve ser de 3,3 V; siga a especificação de alimentação do LoRa.
+
+3. INICIALIZAÇÃO
+
+O programa abre o Monitor Serial USB a 115200 baud e a UART do rádio a
+9600 baud. Pela UART, verifica os comandos AT e configura o modem para:
+  - transmissão transparente;
+  - pacotes de 230 bytes;
+  - acrescentar o byte binário de RSSI ao final de cada pacote recebido.
+
+O comando usado para habilitar esse recurso é AT+DRSSI1. A configuração é
+consultada e o modem sai do modo AT, reiniciando para aplicar os ajustes.
+Canal, velocidade pelo ar e chave não são alterados pelo programa.
+
+Se a configuração não for confirmada, o código mostra erro e não processa
+coletas, para evitar interpretar um byte comum como se fosse RSSI.
+Confira as ligações, o baud e o modo M0/M1 e reinicie após corrigir.
+
+4. RECEPÇÃO DE CADA COLETA
+
+O protocolo espera um JSON terminado em LF e, em seguida, o byte binário de
+RSSI anexado pelo modem. Cada coleta deve caber em um pacote RF de 230 bytes.
+
+O programa:
+  1. Acumula os bytes do JSON até a quebra de linha.
+  2. Lê o byte seguinte como RSSI bruto, sem interpretá-lo como texto.
+  3. Converte o byte para dBm usando a fórmula do fabricante DX-LR32.
+  4. Interpreta o JSON e verifica sua estrutura básica.
+  5. Obtém a identificação node da station que enviou a coleta.
+  6. Classifica o RSSI pela escala definida no projeto.
+  7. Acrescenta somente o campo signal ao JSON.
+  8. Imprime uma linha JSON no Monitor Serial a 115200 baud.
+
+Mensagens excessivas ou inválidas são descartadas. Uma mensagem interrompida
+é descartada após 5 segundos sem novos bytes. O transporte limita o buffer.
+
+5. FÓRMULA INTERNA E CLASSIFICAÇÃO
+
+RSSI em dBm = valor decimal do byte recebido - 255.
+Exemplo: 0xAB = 171; 171 - 255 = -84 dBm, classificado como Bom.
+Essa fórmula é do DX-LR32; não substituir pela de outro módulo sem verificar.
+
+Escala aplicada exatamente em classifySignal():
+
+  RSSI >= -60 dBm              -> Muito próximo
+  RSSI >= -90 e < -60 dBm      -> Bom
+  RSSI >= -115 e < -90 dBm     -> Regular
+  RSSI >= -130 e < -115 dBm    -> Zona de limite
+  RSSI < -130 dBm             -> Crítico
+
+Os números permanecem internos. A classificação usa o RSSI do pacote atual,
+sem média, SNR, histórico de confirmação ou alteração automática da velocidade.
+Os nomes indicam faixas escolhidas para este projeto; não garantem distância
+física, ausência de interferência ou entrega de todas as mensagens.
+
+6. SAÍDA NO MONITOR SERIAL
+
+Exemplo ilustrativo:
+{"v":1,"node":"station1","seq":1,"uptime_ms":1500,"temp_c":25.4,"air_rh_pct":61.2,"pressure_hpa":931.5,"soil_raw":0,"soil_enabled":false,"signal":"Bom"}
+
+node indica a origem. signal indica como o pacote dessa station chegou a este
+receptor. Os demais campos são os dados enviados pela própria station.
+O receptor preserva valores null dos sensores e o zero do solo desativado.
+
+O resultado é impresso localmente pela USB. Não é devolvido à station por rádio.
+Nesta versão não existe ACK, retransmissão ou confirmação de recepção remota.
+
+7. USO COM VÁRIAS STATIONS
+
+Cada transmissor precisa de um NODE_ID único, como station1 e station2.
+O receptor processa uma coleta por vez e associa o RSSI ao node daquela coleta.
+Não utiliza o RSSI de uma station para classificar outra.
+
+Os rádios devem compartilhar parâmetros RF compatíveis para comunicação.
+Transmissões simultâneas podem colidir. Esta versão não implementa turnos,
+controle de acesso ao canal entre stations ou retransmissão de mensagens.
+
+Se uma station deixar de transmitir, não haverá classificação nova para ela.
+O programa não declara automaticamente "Sem sinal" e não mantém uma tabela de
+stations online/offline. Uma linha antiga no Serial é apenas uma coleta antiga.
+
+8. ARQUIVOS E DEPENDÊNCIAS
+
+Receptor.ino : valida o JSON, classifica o sinal e imprime a coleta.
+RadioLink.h  : configura o modem e separa JSON do byte binário de RSSI.
+
+Biblioteca externa: ArduinoJson 7. HardwareSerial integra o suporte ESP32.
+Não utiliza a biblioteca LoRa para SPI, pois o DX-LR32 é um modem UART.
+
+Abra Receptor.ino mantendo RadioLink.h na mesma pasta. Selecione a placa e a
+porta do ESP32 receptor. A porta detectada anteriormente foi COM5, mas ela
+pode mudar ao reconectar o dispositivo. Monitor Serial: 115200 baud.
+
+9. LIMITES E TESTE DE BANCADA
+
+O formato pressupõe o firmware DX-LR32 descrito no manual UART, RSSI anexado,
+pacote único por coleta e ausência de prefixos adicionais na UART.
+Não funciona diretamente com protocolos de E220, rádios SPI ou LoRaWAN.
+
+Depois de gravar os dois ESP32, observe a confirmação de configuração na
+serial e verifique node e signal nas coletas. Teste diferentes posições e
+identificações de station. A interpretação do RSSI precisa ser validada no
+hardware real. Nenhum firmware foi gravado automaticamente nesta alteração.
+
+Referência: guia UART oficial DX-LR32-900T22D, página 22:
+https://www.szdx-smart.com/static/upload/2025/12/11/202512112006.pdf
+
+ATUALIZACAO — DIAGNOSTICO DE INICIALIZACAO DO MODEM
+O escape +++ agora inclui CR/LF, com esperas maiores e exibicao das respostas.
+O log mostra [nenhum byte recebido do LoRa] se a UART nao receber resposta.
+Bytes nao imprimiveis aparecem em hexadecimal, por exemplo <0D><0A>.
+No receptor, se a configuracao falhar, o Monitor Serial vira uma ponte UART
+para testar o modem a 9600 baud. Selecione Both NL & CR e envie +++ e AT
+separadamente. Reinicie o ESP32 depois dos testes para tentar configurar RSSI.
+M0/M1 soltos sao compativeis com o modo AT padrao SWITCH=0; em SWITCH=1,
+eles controlam o modo e nao devem ficar flutuando. AUX nao e utilizado.
+Nao ligue M0/M1 ao GND sem verificar o modo, pois em SWITCH=0 sao saidas.
+
+
+REVISAO DO CODIGO — UART, VALIDACAO E SENSORES
+
+- O primeiro AT pode ficar sem resposta quando o modem esta em modo transparente.
+  A inicializacao tenta +++ com CR/LF, aguarda e repete o teste AT.
+- A confirmacao exige linhas completas de resposta e OK. Uma mensagem contendo
+  NOTOK ou DRSSI=10 nao confirma OK ou DRSSI=1, respectivamente.
+- Modo transparente, pacote 230 bytes, recepcao continua (SLEEP=2) e RSSI
+  sao consultados antes de alterados, evitando reescritas desnecessarias.
+- A saida do modo AT precisa de Exit AT; Power On sozinho nao confirma sucesso.
+- O receptor limita node a 24 bytes, valida tipos/faixas dos sensores e aceita
+  null para falha ambiental. O solo desativado deve ser enviado como zero.
+- Os textos do JSON recebido sao copiados: a proxima station nao sobrescreve
+  os campos de uma coleta anterior. Timeout/JSON invalido nao gera sinal falso.
+- O AHT20 usa Aht20Reader.h, baseado no protocolo Aosong, com timeout de polling
+  de 300 ms, timeout I2C de 100 ms por transacao e verificacao CRC-8. Nao depende
+  mais da biblioteca Adafruit AHTX0; a biblioteca Adafruit BMP280 continua em uso.
+- Nao foi acrescentado SNR, ACK, media de RSSI ou deteccao de station offline.
+  A escala do RSSI e a associacao por node permanecem como solicitadas.
+
+Foram feitos testes da logica com entradas simuladas. Eles nao substituem o
+teste fisico com os dois ESP32 e os modems reais. Nenhum firmware foi gravado
+automaticamente nesta revisao.
+
+Manual AHT20: https://cdn-learn.adafruit.com/assets/assets/000/091/676/original/AHT20-datasheet-2020-4-16.pdf

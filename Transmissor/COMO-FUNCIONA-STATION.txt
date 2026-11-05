@@ -1,0 +1,161 @@
+FUNCIONAMENTO DA STATION TRANSMISSORA — PROJETO TCC
+=================================================
+
+1. OBJETIVO
+
+Esta station utiliza um ESP32, um módulo LoRa DX-LR32-900T22D e um módulo
+com sensores AHT20 e BMP280 para coletar dados ambientais e enviá-los por
+rádio a outro ESP32, que funciona como receptor.
+
+O código também está preparado para um sensor capacitivo de umidade do solo.
+Como esse sensor ainda não está conectado, sua leitura está desativada e o
+valor enviado é zero. A station não calcula a qualidade do sinal: essa tarefa
+é feita no receptor quando ele recebe cada pacote.
+
+2. COMPONENTES E LIGAÇÕES CONSIDERADAS
+
+- ESP32 clássico, compatível com a configuração ESP32 Dev Module.
+- LoRa DX-LR32-900T22D com antena adequada e alimentação estável.
+- Módulo AHT20 + BMP280 no barramento I2C.
+- Sensor capacitivo de umidade do solo, previsto para conexão futura.
+
+Ligações de dados:
+  GPIO16 (RX2 do ESP32) -> TX do módulo LoRa.
+  GPIO17 (TX2 do ESP32) -> RX do módulo LoRa.
+  GPIO21              -> SDA do AHT20 + BMP280.
+  GPIO22              -> SCL do AHT20 + BMP280.
+  GPIO34              -> AO do sensor de solo, quando conectado.
+  GND                 -> terra comum entre ESP32, LoRa e sensores.
+
+Os sinais do ESP32 são de 3,3 V. A saída analógica do solo não deve ultrapassar
+3,3 V. A alimentação dos módulos deve seguir suas especificações; para o LoRa,
+o fabricante informa alimentação de 3,3 a 5,5 V e lógica UART de 3,3 V.
+
+3. O QUE ACONTECE AO LIGAR
+
+O ESP32 abre a comunicação USB a 115200 baud e a UART do LoRa a 9600 baud.
+O programa verifica a comunicação AT com o modem e configura:
+  - transmissão transparente;
+  - tamanho de pacote de 230 bytes;
+  - byte RSSI desativado na UART desta station, que só transmite as coletas.
+
+Canal, velocidade pelo ar e chave dos rádios não são alterados pelo código.
+Esses parâmetros devem ser compatíveis com os do receptor.
+
+Se a configuração do modem não for confirmada, a station informa erro no
+Monitor Serial e não inicia os envios. Depois de corrigir as ligações ou a
+configuração, reinicie o ESP32.
+
+O código inicializa o AHT20 e procura o BMP280 nos endereços I2C 0x76 e 0x77.
+
+4. CICLO DE COLETA E TRANSMISSÃO
+
+A primeira coleta acontece após a inicialização. As seguintes são agendadas
+pelo intervalo COLLECTION_INTERVAL_MS, no início do arquivo Transmissor.ino.
+O padrão é 10000 ms, isto é, 10 segundos. O mínimo efetivo é 2 segundos.
+
+Em cada coleta, a station:
+  1. Incrementa o número da coleta.
+  2. Lê a temperatura e a umidade relativa do ar no AHT20.
+  3. Lê a pressão atmosférica no BMP280 e converte de Pa para hPa.
+  4. Lê o solo apenas se SOIL_SENSOR_ENABLED estiver ativado.
+  5. Monta o documento JSON e verifica se ele cabe no pacote.
+  6. Envia o JSON e uma quebra de linha ao modem por UART.
+  7. Imprime a coleta enviada no Monitor Serial USB.
+
+A entrega à UART não confirma que o receptor recebeu pelo rádio. Esta versão
+não aguarda ACK nem retransmite automaticamente uma coleta perdida.
+
+5. CAMPOS DO JSON ENVIADO
+
+v            : versão do formato da mensagem, atualmente 1.
+node         : identificação da station; padrão "station1".
+seq          : número da coleta, reiniciado a cada boot.
+uptime_ms    : milissegundos desde o boot, sem representar data ou hora real.
+temp_c       : temperatura do AHT20 em graus Celsius.
+air_rh_pct   : umidade relativa do ar em percentual.
+pressure_hpa : pressão atmosférica local em hectopascals, sem correção ao mar.
+soil_raw     : leitura bruta do ADC do solo, de 0 a 4095; zero se desativado.
+soil_enabled : indica se a leitura do solo está ativada no código.
+
+Exemplo ilustrativo, não uma medição real:
+{"v":1,"node":"station1","seq":1,"uptime_ms":1500,"temp_c":25.4,"air_rh_pct":61.2,"pressure_hpa":931.5,"soil_raw":0,"soil_enabled":false}
+
+O campo "signal" NÃO é enviado pela station. Ele é acrescentado pelo receptor
+ao JSON mostrado no Monitor Serial, usando o RSSI do pacote recebido.
+
+6. TRATAMENTO DOS SENSORES
+
+Uma leitura ausente ou fora dos limites aceitos do AHT20/BMP280 gera null no
+campo correspondente. O programa tenta reinicializar sensores com falha em
+coletas seguintes quando o driver identifica o problema.
+
+Para o solo, mantenha SOIL_SENSOR_ENABLED = false até a conexão física.
+Depois, altere para true e grave novamente. O código faz a média de 16
+leituras do ADC. Não converte para percentual sem calibração seco/molhado.
+Uma entrada analógica desconectada pode produzir valores aleatórios; o código
+não detecta automaticamente essa desconexão. Se retirar o sensor, desative-o.
+
+7. IDENTIFICAÇÃO DE MAIS STATIONS
+
+Altere NODE_ID para um nome exclusivo em cada transmissor: station1,
+station2, station3 etc. O receptor identifica a origem por esse campo.
+Use nomes curtos para respeitar o limite de 229 bytes de JSON mais LF.
+Transmissões simultâneas podem colidir; esta versão não organiza turnos RF.
+
+8. ARQUIVOS E BIBLIOTECAS
+
+Transmissor.ino : configurações principais, agendamento e montagem do JSON.
+SensorReadings.h: inicialização e leitura dos sensores.
+Aht20Reader.h   : leitura AHT20 com prazo de espera e verificação CRC-8.
+RadioLink.h     : configuração AT, limite de pacote e transporte UART.
+
+Bibliotecas: ArduinoJson 7, Adafruit BMP280 Library e suas
+dependências. Wire e HardwareSerial fazem parte do suporte ESP32.
+Este módulo LoRa usa UART; a biblioteca LoRa para rádios SPI não é utilizada.
+
+Abra Transmissor.ino mantendo SensorReadings.h, Aht20Reader.h e RadioLink.h na mesma pasta.
+O Monitor Serial deve estar em 115200 baud.
+
+9. VALIDAÇÃO
+
+A compilação verifica o código. O funcionamento físico ainda depende de
+gravação nos dois ESP32 e teste com antenas, alimentação e rádios configurados.
+Nenhum firmware foi gravado automaticamente nesta alteração.
+
+ATUALIZACAO — DIAGNOSTICO DE INICIALIZACAO DO MODEM
+O escape +++ agora inclui CR/LF, com esperas maiores e exibicao das respostas.
+O log mostra [nenhum byte recebido do LoRa] se a UART nao receber resposta.
+Bytes nao imprimiveis aparecem em hexadecimal, por exemplo <0D><0A>.
+No receptor, se a configuracao falhar, o Monitor Serial vira uma ponte UART
+para testar o modem a 9600 baud. Selecione Both NL & CR e envie +++ e AT
+separadamente. Reinicie o ESP32 depois dos testes para tentar configurar RSSI.
+M0/M1 soltos sao compativeis com o modo AT padrao SWITCH=0; em SWITCH=1,
+eles controlam o modo e nao devem ficar flutuando. AUX nao e utilizado.
+Nao ligue M0/M1 ao GND sem verificar o modo, pois em SWITCH=0 sao saidas.
+
+
+REVISAO DO CODIGO — UART, VALIDACAO E SENSORES
+
+- O primeiro AT pode ficar sem resposta quando o modem esta em modo transparente.
+  A inicializacao tenta +++ com CR/LF, aguarda e repete o teste AT.
+- A confirmacao exige linhas completas de resposta e OK. Uma mensagem contendo
+  NOTOK ou DRSSI=10 nao confirma OK ou DRSSI=1, respectivamente.
+- Modo transparente, pacote 230 bytes, recepcao continua (SLEEP=2) e RSSI
+  sao consultados antes de alterados, evitando reescritas desnecessarias.
+- A saida do modo AT precisa de Exit AT; Power On sozinho nao confirma sucesso.
+- O receptor limita node a 24 bytes, valida tipos/faixas dos sensores e aceita
+  null para falha ambiental. O solo desativado deve ser enviado como zero.
+- Os textos do JSON recebido sao copiados: a proxima station nao sobrescreve
+  os campos de uma coleta anterior. Timeout/JSON invalido nao gera sinal falso.
+- O AHT20 usa Aht20Reader.h, baseado no protocolo Aosong, com timeout de polling
+  de 300 ms, timeout I2C de 100 ms por transacao e verificacao CRC-8. Nao depende
+  mais da biblioteca Adafruit AHTX0; a biblioteca Adafruit BMP280 continua em uso.
+- Nao foi acrescentado SNR, ACK, media de RSSI ou deteccao de station offline.
+  A escala do RSSI e a associacao por node permanecem como solicitadas.
+
+Foram feitos testes da logica com entradas simuladas. Eles nao substituem o
+teste fisico com os dois ESP32 e os modems reais. Nenhum firmware foi gravado
+automaticamente nesta revisao.
+
+Manual AHT20: https://cdn-learn.adafruit.com/assets/assets/000/091/676/original/AHT20-datasheet-2020-4-16.pdf
