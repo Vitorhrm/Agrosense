@@ -1,5 +1,15 @@
 # AgroSense
 
+> **TCC em desenvolvimento** · Bacharelado em Sistemas de Informação, IFMG.
+
+O projeto investiga como dados meteorológicos e medições de uma estação ESP32 com sensores de solo podem apoiar decisões de irrigação. Este repositório apresenta o aplicativo do protótipo.
+
+| Área | Estado atual |
+| --- | --- |
+| Aplicativo | Interface React/TypeScript para web e Android e autenticação por e-mail via Supabase |
+| Monitoramento agrícola | Telas com dados demonstrativos |
+| Integrações em desenvolvimento | Estação ESP32, dados meteorológicos reais, provisionamento de dispositivos e persistência de medições |
+
 Aplicativo acadêmico de monitoramento agrícola e apoio à irrigação, com interface em **React e TypeScript** e autenticação pelo **Supabase**. A mesma interface pode ser executada no navegador ou empacotada como aplicativo Android.
 
 ## Tecnologias
