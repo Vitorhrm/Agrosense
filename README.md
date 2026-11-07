@@ -2,7 +2,9 @@
 
 **Sistema acadêmico de monitoramento agrícola e apoio à decisão de irrigação**, desenvolvido como Trabalho de Conclusão de Curso do Bacharelado em Sistemas de Informação do IFMG.
 
-Este repositório reúne o projeto completo: o aplicativo web/Android, o firmware das estações de coleta, o firmware do receptor LoRa e a API com painel de telemetria. O objetivo é integrar medições ambientais e do solo a uma interface que ajude a acompanhar as condições do cultivo.
+Este repositório reúne o projeto completo: o aplicativo web/Android em `APP`, o firmware das estações de coleta, o firmware do receptor LoRa e a API de telemetria. O objetivo é integrar medições ambientais e do solo a uma interface que ajude a acompanhar as condições do cultivo.
+
+O frontend em `backend/public` foi criado **somente para teste** do recebimento de dados e dos resumos da IA. O aplicativo principal é o de `APP`; sua integração com a API ainda está pendente.
 
 > **Em desenvolvimento.** O aplicativo já possui autenticação pelo Supabase, mas as informações agrícolas exibidas ainda são demonstrativas. A coleta e a recepção LoRa foram confirmadas na bancada, incluindo solo no GPIO34. A API e o painel experimental estão publicados na Vercel; o receptor agora implementa Wi-Fi/HTTPS. A integração com o aplicativo original em APP ainda está pendente.
 
@@ -396,7 +398,9 @@ arduino-cli compile --fqbn esp32:esp32:esp32 Receptor
 
 As compilações anteriores foram verificadas para `ESP32 Dev Module`. Também foram feitos testes de lógica com entradas simuladas durante o desenvolvimento: limites da escala RSSI, respostas AT, fragmentação UART, bytes RSSI especiais, identificação de estações, descarte/recuperação de pacotes, CRC e timeout do AHT20. Esse verificador auxiliar não integra uma suíte executável versionada neste repositório.
 
-**Teste físico ainda necessário:** grave as versões correspondentes nos dois ESP32, confira os comandos AT e compare as coletas enviadas/recebidas. Valide sensores, antenas, alimentação, várias posições e várias estações. Compilação e testes simulados não confirmam funcionamento do enlace físico nem a integração com o aplicativo.
+**Validação física realizada em 05/11/2026:** o transmissor coletou AHT20, BMP280 e solo no GPIO34. O receptor na COM5 recebeu o JSON por LoRa, classificou o RSSI por `node`, conectou ao Wi-Fi e enviou as coletas por HTTPS. O recebimento no Supabase, a consulta no painel de teste e a geração de resumo NVIDIA foram confirmados. Cinco testes automatizados do backend passaram. Isso não valida a integração com o aplicativo principal em `APP`, nem o alcance e a estabilidade em campo com múltiplas estações.
+
+Para configurar a rede do receptor, copie `Receptor/WifiConfig.example.h` para `WifiConfig.local.h` e preencha SSID e senha de uma rede de 2,4 GHz. Configure URL e token em `CloudConfig.local.h`, usando `CloudConfig.example.h` como modelo. Os arquivos locais não são versionados. O envio roda em tarefa separada; a recepção LoRa e o Serial continuam ativos sem internet. Consulte o [guia da API](backend/README.md) para certificados HTTPS, fila em RAM, retentativas e variáveis da Vercel.
 
 ## Solução de problemas
 
@@ -416,7 +420,7 @@ As compilações anteriores foram verificadas para `ESP32 Dev Module`. Também f
 | Porta web ocupada | Libere `127.0.0.1:5173`; o servidor usa porta fixa |
 | Android sem encontrar Node.js | Configure `NODE_BINARY` em `APP/local.properties` |
 
-Foi observado durante o desenvolvimento um erro de ausência de confirmação AT no hardware. O código recebeu melhorias de inicialização e diagnóstico; a causa física e o funcionamento dos módulos ainda precisam ser confirmados com novos logs de bancada.
+O modem real responde às consultas AT com o valor consultado, sem `OK` adicional. Essa diferença foi corrigida e validada em bancada. O comando `AT` e os comandos de escrita continuam exigindo `OK`; as consultas exigem a linha exata do valor esperado.
 
 ## Cuidados de configuração
 
@@ -429,12 +433,13 @@ Foi observado durante o desenvolvimento um erro de ausência de confirmação AT
 
 ## Próximas etapas
 
-- [ ] Validar a configuração AT e a comunicação real dos módulos LoRa.
-- [ ] Conectar e calibrar o sensor de solo.
+- [x] Validar a configuração AT e a comunicação real dos módulos LoRa na bancada.
+- [x] Conectar e coletar o sensor de solo no GPIO34.
+- [ ] Calibrar o sensor de solo antes de exibir percentual ou recomendar irrigação.
 - [ ] Testar estabilidade, perdas e colisões com múltiplas estações.
 - [x] Implementar API de ingestão, armazenamento Supabase e painel experimental.
 - [ ] Integrar a API às telas do aplicativo original e ao cadastro de áreas/usuários.
-- [ ] Implementar o encaminhamento das coletas pelo receptor.
+- [x] Implementar e validar o encaminhamento Wi-Fi/HTTPS das coletas pelo receptor.
 - [ ] Vincular dispositivos e áreas a usuários com autorização adequada.
 - [ ] Substituir os dados demonstrativos do aplicativo por dados reais.
 - [ ] Implementar o provisionamento real dos dispositivos, se confirmado no escopo.

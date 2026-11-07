@@ -1,4 +1,7 @@
 # AgroSense Lab: API e painel
+
+> **Escopo:** a API recebe e persiste a telemetria do projeto. O frontend em `public/` é apenas um painel de teste; o aplicativo principal fica em [`../APP`](../APP/README.md). Os testes deste painel não significam que o aplicativo principal já consome as leituras reais.
+
 Painel publicado: https://agrosense-lab-vitor-f35a.vercel.app
 
 Recebe JSON do receptor ESP32 por HTTPS, armazena no Supabase e mostra as medições por estação. O botão **Gerar resumo** chama NVIDIA Build com `nvidia/nemotron-3.5-bolt-e4b`. Este painel é separado do aplicativo web/Android em `../APP`, cuja integração com esta API ainda está pendente.

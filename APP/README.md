@@ -2,7 +2,9 @@
 
 > **TCC em desenvolvimento** · Bacharelado em Sistemas de Informação, IFMG.
 
-O projeto investiga como dados meteorológicos e medições de uma estação ESP32 com sensores de solo podem apoiar decisões de irrigação. Este repositório apresenta o aplicativo do protótipo.
+O projeto investiga como dados meteorológicos e medições de uma estação ESP32 com sensores de solo podem apoiar decisões de irrigação. Esta pasta contém o aplicativo principal do protótipo; o repositório completo também inclui os firmwares e a API, descritos no [README geral](../README.md).
+
+O painel em `../backend/public` foi criado somente para testar a telemetria e a IA. Ele não substitui este aplicativo. A coleta física, o envio LoRa e o encaminhamento Wi-Fi/HTTPS foram validados em bancada em 05/11/2026; a integração dessas leituras às telas deste aplicativo continua pendente.
 
 | Área | Estado atual |
 | --- | --- |
