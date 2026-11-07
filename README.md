@@ -338,6 +338,10 @@ O receptor separa os dados do RSSI, valida o formato e acrescenta `signal` à sa
 
 Os valores numéricos de RSSI/SNR não são incluídos nessa saída. O parser suporta fragmentação da entrega pela UART, mas pressupõe **um pacote RF por coleta**, sem prefixos adicionais. Mensagens inválidas, excessivas ou interrompidas são descartadas. Não há ACK nem confirmação de entrega: terminar o envio pela UART não comprova recepção pelo rádio.
 
+## Calibração do solo
+
+O utilitário [`CalibracaoSolo`](CalibracaoSolo/README.md) captura referências seca e saturada no GPIO34. Preencha `Transmissor/SoilCalibrationConfig.h` com as médias medidas e regrave a estação. As referências começam desabilitadas; não há valores universais prontos. O índice relativo de dois pontos aparece somente no Serial do transmissor, sem alterar o JSON `soil_raw` ou o frontend de teste. Para teor de água e decisões de irrigação, é necessária calibração específica com amostras de referência. Consulte o guia para procedimento, limitações e fontes.
+
 ## Classificação do sinal por estação
 
 O cálculo acontece exclusivamente no **receptor**, a partir do pacote da estação identificada em `node`. O campo `signal` descreve o sentido **estação → receptor** naquela coleta.

@@ -13,6 +13,8 @@ static_assert(sizeof(NODE_ID) > 1 && sizeof(NODE_ID) <= 25, "NODE_ID deve ter de
 
 #include "SensorReadings.h"
 #include "RadioLink.h"
+#include "SoilCalibration.h"
+#include "SoilCalibrationConfig.h"
 
 HardwareSerial loraSerial(2); // UART2 dedicada ao modem.
 RadioLink radio(loraSerial); // Transporte UART e configuracao do modem.
@@ -30,6 +32,11 @@ void collectAndSend() {
   message["seq"] = ++sequenceNumber;
   message["uptime_ms"] = millis(); // Tempo desde o boot, nao horario de calendario.
   sensors.collect(message, SOIL_SENSOR_ENABLED, SOIL_ANALOG_PIN);
+  if (SOIL_SENSOR_ENABLED) {
+    const float soilIndex = SoilCalibration::relativeIndex(message["soil_raw"].as<int>(),
+        SOIL_DRY_REFERENCE, SOIL_WET_REFERENCE); // Indice local, nao percentual volumetrico.
+    if (isfinite(soilIndex)) Serial.printf("Solo: indice relativo %.1f/100 (referencias locais).\n", soilIndex);
+  }
   if (!radio.send(message)) {
     Serial.println("ERRO: JSON excedeu o limite, faltou memoria ou houve falha na UART.");
     return;
@@ -43,6 +50,8 @@ void collectAndSend() {
 // Prepara o modem transparente e os sensores; nao modifica canal, nivel ou chave RF.
 void setup() {
   Serial.begin(115200);
+  if (SOIL_SENSOR_ENABLED && !SoilCalibration::valid(SOIL_DRY_REFERENCE, SOIL_WET_REFERENCE))
+    Serial.println("Solo sem calibracao: preencha SoilCalibrationConfig.h; JSON continua com ADC bruto.");
   radioReady = radio.begin(LORA_RX_PIN, LORA_TX_PIN, LORA_BAUD_RATE, false);
   sensors.begin(I2C_SDA_PIN, I2C_SCL_PIN);
   if (SOIL_SENSOR_ENABLED) {
