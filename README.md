@@ -19,7 +19,9 @@ O frontend em `backend/public` foi criado **somente para teste** do recebimento 
 - [Executar o aplicativo Android](#executar-o-aplicativo-android)
 - [Montar e programar os ESP32](#montar-e-programar-os-esp32)
 - [Protocolo de dados](#protocolo-de-dados)
+- [Calibração do solo](#calibração-do-solo)
 - [Classificação do sinal por estação](#classificação-do-sinal-por-estação)
+- [Descoberta e pareamento LoRa](#descoberta-e-pareamento-lora)
 - [Backend e Supabase](#backend-e-supabase)
 - [Testes e validação](#testes-e-validação)
 - [Solução de problemas](#solução-de-problemas)
@@ -359,6 +361,14 @@ Internamente, o firmware aplica a fórmula do manual DX-LR32: `RSSI_dBm = byte_r
 Essas categorias são a escala escolhida para o projeto. Elas não medem distância, não garantem ausência de perdas e não alteram automaticamente a velocidade do rádio. A classificação usa o pacote atual, sem média, SNR ou taxa de entrega. O guia UART consultado não documenta SNR por pacote para leitura pelo ESP32.
 
 Cada JSON associa o sinal ao seu `node`; o RSSI de uma estação não é reutilizado para outra. Se uma estação parar de enviar, não existe medição nova: o firmware atual não mantém uma tabela de dispositivos online/offline nem gera automaticamente um estado “Sem sinal”.
+
+## Descoberta e pareamento LoRa
+
+Hoje, o transmissor e o receptor usam o modo transparente dos rádios DX-LR32, com parâmetros de rádio compatíveis configurados previamente. O campo `node` identifica cada estação nas coletas.
+
+Para uma versão futura, a proposta é configurar no receptor um nome de rede, como `AgroSense-TCC`, e uma senha de pareamento. O celular acessaria o transmissor por Bluetooth para iniciar a busca. O transmissor consultaria os receptores em um canal LoRa de descoberta e apresentaria os nomes disponíveis no aplicativo. Após selecionar a rede, o usuário informaria a senha para o transmissor comprovar o acesso por desafio e resposta e salvar o destino confirmado.
+
+Essa busca e o pareamento estão em fase de proposta. O cadastro Bluetooth em `APP` é uma prévia de interface.
 
 ## Backend e Supabase
 
