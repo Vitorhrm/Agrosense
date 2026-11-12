@@ -1,4 +1,4 @@
-import { AlertCircle, Check, ChevronRight, Droplets, Leaf, Plus, RadioTower } from "lucide-react"
+import { AlertCircle, Check, ChevronRight, Droplets, Leaf, Plus, RadioTower, Bluetooth } from "lucide-react"
 import { Button } from "../../components/Button/Button"
 import { TopBar } from "../../components/TopBar/TopBar"
 import { AppShell } from "../../components/AppShell/AppShell"
@@ -18,6 +18,9 @@ export function HomeScreen({ go, user, onOpenArea }: { onOpenArea: (name: string
         </Button>
         <Button variant="secondary" icon={Leaf} full onClick={() => go("crop")}>
           Áreas e culturas
+        </Button>
+        <Button variant="secondary" icon={Bluetooth} full onClick={() => go("new-station")}>
+          Configurar dispositivos
         </Button>
         <button className="attention-banner" onClick={() => go("alerts")}>
           <span>

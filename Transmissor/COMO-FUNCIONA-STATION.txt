@@ -199,3 +199,12 @@ Graficos por station e resumo manual das ultimas 120 coletas via NVIDIA
 nvidia/nemotron-3.5-bolt-e4b. Solo e ADC bruto; nao e percentual nem recomenda
 irrigacao sem calibracao. O nome do sinal e RSSI LoRa, nao sinal Wi-Fi.
 Guia completo de configuracao: backend/README.md.
+
+CONFIGURACAO NO ANDROID
+Reinicie o ESP32 e abra Configurar dispositivos no app. O anuncio AgroSense-TX
+fica ativo por cinco minutos e o PIN aparece na serial USB a 115200.
+O nome exibido e o vinculo com a area podem ser alterados pelo app. NODE_ID
+continua sendo a identidade da coleta no radio e no banco.
+Configure as referencias ADC medidas em SoilCalibrationConfig.h para enviar
+soil_index_pct (indice relativo 0 a 100), junto de soil_raw.
+A busca de SSID e a senha LoRa ainda nao estao implementadas.

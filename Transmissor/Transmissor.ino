@@ -17,10 +17,12 @@ static_assert(isValidStationId(NODE_ID, sizeof(NODE_ID) - 1),
 #include "RadioLink.h"
 #include "SoilCalibration.h"
 #include "SoilCalibrationConfig.h"
+#include "BleProvisioning.h"
 
 HardwareSerial loraSerial(2); // UART2 dedicada ao modem.
 RadioLink radio(loraSerial); // Transporte UART e configuracao do modem.
 SensorReadings sensors; // Leitura dos sensores ambientais.
+BleProvisioning provisioning;
 bool radioReady = false; // Configuracao do modem confirmada.
 bool firstCollection = true; // Coleta imediatamente apos a inicializacao.
 uint32_t lastCollectionMs = 0; // Instante de inicio da ultima coleta.
@@ -37,7 +39,11 @@ void collectAndSend() {
   if (SOIL_SENSOR_ENABLED) {
     const float soilIndex = SoilCalibration::relativeIndex(message["soil_raw"].as<int>(),
         SOIL_DRY_REFERENCE, SOIL_WET_REFERENCE); // Indice local, nao percentual volumetrico.
-    if (isfinite(soilIndex)) Serial.printf("Solo: indice relativo %.1f/100 (referencias locais).\n", soilIndex);
+    if (isfinite(soilIndex)) {
+      // Um decimal conserva o índice histórico sem ocupar bytes desnecessários no rádio.
+      message["soil_index_pct"] = roundf(soilIndex * 10.0f) / 10.0f;
+      Serial.printf("Solo: indice relativo %.1f/100 (referencias locais).\n", soilIndex);
+    }
   }
   if (!radio.send(message)) {
     Serial.println("ERRO: JSON excedeu o limite, faltou memoria ou houve falha na UART.");
@@ -52,20 +58,24 @@ void collectAndSend() {
 // Prepara o modem transparente e os sensores; nao modifica canal, nivel ou chave RF.
 void setup() {
   Serial.begin(115200);
+  provisioning.load("AgroSense-TX");
   if (SOIL_SENSOR_ENABLED && !SoilCalibration::valid(SOIL_DRY_REFERENCE, SOIL_WET_REFERENCE))
     Serial.println("Solo sem calibracao: preencha SoilCalibrationConfig.h; JSON continua com ADC bruto.");
   radioReady = radio.begin(LORA_RX_PIN, LORA_TX_PIN, LORA_BAUD_RATE, false);
   sensors.begin(I2C_SDA_PIN, I2C_SCL_PIN);
   if (SOIL_SENSOR_ENABLED) {
+    analogReadResolution(12);
     pinMode(SOIL_ANALOG_PIN, INPUT); // GPIO34 nao possui pull-up/pull-down interno.
     analogSetPinAttenuation(SOIL_ANALOG_PIN, ADC_11db); // Faixa ADC adequada a saida analogica em 3,3 V.
   }
   Serial.println(radioReady ? "Station pronta. Classificacao do sinal e feita no receptor."
       : "ERRO: modem sem configuracao confirmada. Confira ligacoes/baud e reinicie.");
+  provisioning.begin("AgroSense-TX", false, NODE_ID);
 }
 
 // Agenda coletas; minimo de 2 segundos evita leituras ambientais excessivas.
 void loop() {
+  provisioning.update();
   if (!radioReady) { delay(10); return; }
   const uint32_t now = millis(); // Relogio desta iteracao; subtracao suporta overflow.
   const uint32_t interval = COLLECTION_INTERVAL_MS < 2000 ? 2000 : COLLECTION_INTERVAL_MS;

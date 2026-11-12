@@ -21,7 +21,15 @@ export function validateReading(value) {
   }
   if (!Number.isInteger(value.soil_raw) || value.soil_raw < 0 || value.soil_raw > 4095 || (!value.soil_enabled && value.soil_raw !== 0)) throw new AppError(400, 'Leitura de solo inválida.');
   if (value.event_id !== undefined && (typeof value.event_id !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value.event_id))) throw new AppError(400, 'event_id inválido.');
-  return Object.fromEntries(['v', 'node', 'seq', 'uptime_ms', 'temp_c', 'air_rh_pct', 'pressure_hpa', 'soil_raw', 'soil_enabled', 'signal'].map(key => [key, value[key]]));
+  const reading = Object.fromEntries(['v', 'node', 'seq', 'uptime_ms', 'temp_c', 'air_rh_pct', 'pressure_hpa', 'soil_raw', 'soil_enabled', 'signal'].map(key => [key, value[key]]));
+  if (value.soil_index_pct !== undefined) {
+    const index = value.soil_index_pct;
+    if (!value.soil_enabled || !Number.isFinite(index) || index < 0 || index > 100) {
+      throw new AppError(400, 'Índice relativo de solo inválido.');
+    }
+    reading.soil_index_pct = index;
+  }
+  return reading;
 }
 
 // A IA recebe estatísticas verificáveis; solo permanece ADC, sem percentual inventado.

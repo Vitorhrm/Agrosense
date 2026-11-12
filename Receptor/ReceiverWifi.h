@@ -2,6 +2,7 @@
 
 #include <Arduino.h>
 #include <WiFi.h>
+#include "ProvisioningSettings.h"
 
 #if __has_include("WifiConfig.local.h")
 #include "WifiConfig.local.h"
@@ -13,10 +14,13 @@
 class ReceiverWifi {
  public:
   // Inicia a interface como cliente do roteador, caso exista um SSID configurado.
-  void begin() {
-    enabled_ = strlen(WIFI_SSID) > 0;
+  void begin(const ProvisionedWifi& wifi) {
+    if (enabled_) WiFi.disconnect();
+    wifi_ = wifi;
+    enabled_ = wifi_.ssid[0] != '\0';
+    wasConnected_ = false;
     if (!enabled_) {
-      Serial.println("Wi-Fi nao configurado. Preencha WifiConfig.local.h. LoRa e Serial continuam ativos.");
+      Serial.println("Wi-Fi nao configurado. Configure por Bluetooth ou WifiConfig.local.h.");
       return;
     }
     WiFi.persistent(false); // Evita gravar as credenciais na memoria flash a cada tentativa.
@@ -54,10 +58,11 @@ class ReceiverWifi {
   void startConnection() {
     lastAttemptMs_ = millis();
     Serial.println("Wi-Fi: tentando conectar ao roteador...");
-    WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+    WiFi.begin(wifi_.ssid, wifi_.password);
   }
 
   bool enabled_ = false; // Indica se existe configuracao de rede local.
+  ProvisionedWifi wifi_{};
   bool wasConnected_ = false; // Evita repetir mensagens de estado no Monitor Serial.
   uint32_t lastAttemptMs_ = 0; // Marca a ultima tentativa; suporta a volta do millis().
 };

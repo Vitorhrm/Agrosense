@@ -5,6 +5,7 @@
 #include "ReceiverWifi.h"
 #include "CloudUploader.h"
 #include "StationId.h"
+#include "BleProvisioning.h"
 
 constexpr int LORA_RX_PIN = 16; // Recebe do TX do LoRa.
 constexpr int LORA_TX_PIN = 17; // Envia ao RX do LoRa.
@@ -14,6 +15,7 @@ RadioLink radio(loraSerial); // Transporte que separa JSON do byte binario de RS
 bool radioReady = false; // Evita interpretar bytes sem configuracao RSSI confirmada.
 ReceiverWifi receiverWifi; // Gerencia a conexao ao roteador sem esperar no loop LoRa.
 CloudUploader cloudUploader; // Envia coletas validadas em uma tarefa separada.
+BleProvisioning provisioning;
 
 // Aplica exatamente os limites pedidos, sem media, SNR ou percentual de entrega.
 const char* classifySignal(int rssiDbm) {
@@ -36,11 +38,14 @@ bool validReading(JsonVariantConst reading, float minimum, float maximum) {
 // Associa o RSSI deste pacote a station identificada nele e imprime apenas o nome do sinal.
 void handleCollection(JsonDocument& message, int rssiDbm) {
   const JsonString node = message["node"].as<JsonString>();
+  const JsonVariantConst soilIndex = message["soil_index_pct"];
   if (message["v"] != 1 || !isValidStationId(node.c_str(), node.size()) ||
       !message["seq"].is<uint32_t>() || !message["uptime_ms"].is<uint32_t>() ||
       !message["soil_raw"].is<int>() || !message["soil_enabled"].is<bool>() ||
       message["soil_raw"].as<int>() < 0 || message["soil_raw"].as<int>() > 4095 ||
       (!message["soil_enabled"].as<bool>() && message["soil_raw"].as<int>() != 0) ||
+      (!soilIndex.isUnbound() && (!message["soil_enabled"].as<bool>() ||
+          soilIndex.isNull() || !validReading(soilIndex, 0, 100))) ||
       !validReading(message["temp_c"], -40, 85) ||
       !validReading(message["air_rh_pct"], 0, 100) ||
       !validReading(message["pressure_hpa"], 300, 1100)) {
@@ -57,7 +62,8 @@ void handleCollection(JsonDocument& message, int rssiDbm) {
 // Habilita RSSI anexado no receptor e verifica a resposta AT antes de receber coletas.
 void setup() {
   Serial.begin(115200);
-  receiverWifi.begin(); // SSID e senha ficam em WifiConfig.local.h.
+  provisioning.load("AgroSense-RX", WIFI_SSID, WIFI_PASSWORD);
+  receiverWifi.begin(provisioning.initialWifi());
   cloudUploader.begin(); // Token e URL ficam em CloudConfig.local.h, separado das chaves da IA.
   radioReady = radio.begin(LORA_RX_PIN, LORA_TX_PIN, LORA_BAUD_RATE, true);
   Serial.println(radioReady ? "Receptor pronto. RSSI classificado por station. Serial: 115200."
@@ -68,6 +74,8 @@ void setup() {
     Serial.println("Use Both NL & CR no Monitor Serial. Tente +++ e depois AT, separadamente.");
     Serial.println("Bytes recebidos serao exibidos abaixo em texto/hex. Nenhum RSSI sera inventado.");
   }
+  provisioning.setWifiConnected(receiverWifi.isConnected());
+  provisioning.begin("AgroSense-RX", true, "");
 }
 
 // Ponte de diagnostico: permite testar o modem pelo Monitor Serial quando a configuracao falha.
@@ -86,7 +94,11 @@ void diagnoseModem() {
 
 // Cada mensagem tem seu RSSI e identificador; nao mistura valores entre stations.
 void loop() {
+  ProvisionedWifi updatedWifi;
+  if (provisioning.takeWifiChange(updatedWifi)) receiverWifi.begin(updatedWifi);
   receiverWifi.update(); // Reconecta mesmo quando o radio esta em diagnostico.
+  provisioning.setWifiConnected(receiverWifi.isConnected());
+  provisioning.update();
   if (!radioReady) { diagnoseModem(); delay(1); return; }
   JsonDocument message; // Coleta recebida da station.
   int receivedRssi = 0; // Valor interno em dBm, nao incluido no JSON de saida.

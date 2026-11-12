@@ -3,13 +3,13 @@ import { AppShell } from "../../components/AppShell/AppShell"
 import { DeviceRegistration } from "../../features/devices/DeviceRegistration/DeviceRegistration"
 import type { Screen } from "../../types/navigation"
 
-export function NewStation({ go, areaName }: { go: (screen: Screen) => void; areaName: string }) {
+export function NewStation({ go, userId }: { go: (screen: Screen) => void; userId: string }) {
   return (
     <AppShell screen="new-station" go={go} noNav>
-      <TopBar title="Cadastrar estação" subtitle={areaName} back onBack={() => go("area")} action={<span />} />
-      <section className="form-page">
-        <DeviceRegistration areaName={areaName} initialKind="station" onClose={() => go("area")} />
-      </section>
+      <TopBar title="Configurar dispositivos" back onBack={() => go("home")} action={<span />} />
+      <div className="page">
+        <DeviceRegistration userId={userId} />
+      </div>
     </AppShell>
   )
 }

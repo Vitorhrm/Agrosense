@@ -1,4 +1,4 @@
-# Calibração do sensor capacitivo de solo v2.0
+# Calibração do Capacitive Soil Moisture Sensor v2.0.0
 
 O método de dois pontos é uma normalização inicial. Não existe um par universal de valores ADC para todos os sensores v2.0, solos e placas ESP32. As referências começam como **não medidas**; não foram copiados valores de exemplos da internet.
 
@@ -41,3 +41,11 @@ Para obter teor de água adequado a uma análise quantitativa do TCC, obtenha v�
 Em **Áreas e culturas → Estações**, informe as médias seca e saturada em ADC e salve. O aplicativo usa os dois pontos para calcular um índice relativo na escala 0–100, preservando o ADC na tela de telemetria. A alteração no app não exige regravar o firmware de coleta. Para obter os pontos, meça na própria montagem com solo seco e saturado, na mesma profundidade e compactação. Repita as capturas e compare a variação com a distância entre as médias.
 
 A literatura encontrou diferenças entre os resultados de sondas capacitivas v2.0 em oito solos. Os números publicados dependem da montagem e não devem ser copiados para a escala do GPIO34. Para estimar teor volumétrico, colete vários pares de ADC e teor de água de referência no solo usado e valide a curva. [Estudo com sondas v2.0 e oito solos](https://doi.org/10.3390/s26113291) · [Método de referência da DFRobot](https://wiki.dfrobot.com/sen0193/docs/18036).
+
+### Valores publicados para comparar na bancada
+
+Um projeto com a inscrição exata **v2.0.0**, ESP32-C6 e alimentação 3,3 V mediu cerca de **2600 ADC no ar** e **930 ADC na água**. Use esse par para ensaiar a conversão ou conferir se a leitura muda no sentido esperado. A placa, o pino e o meio são diferentes do ensaio em solo com GPIO34. [Projeto que publicou as leituras](https://github.com/pyxploiter/esp32-soil-monitor#-sensor-calibration).
+
+Um estudo com sondas v2.0 encontrou resposta não linear e perda de sensibilidade em condições muito úmidas. Os autores ajustaram curvas para oito solos na escala do próprio equipamento. Para estimar teor volumétrico, repita esse método no seu solo com vários pontos de referência e valide a faixa útil. [Strypsteen et al., 2026](https://doi.org/10.3390/s26113291).
+
+Com a estação já coletando, use **Telemetria** para anotar várias leituras ADC em cada condição e salve as médias em **Áreas e culturas → Estações**. Para gravar o índice no pacote LoRa, preencha as mesmas referências em `Transmissor/SoilCalibrationConfig.h` quando for regravar o transmissor.

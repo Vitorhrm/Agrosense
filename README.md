@@ -4,6 +4,8 @@ Protótipo de TCC do curso de Sistemas de Informação do IFMG, Campus Ouro Bran
 
 ## Começar por aqui
 
+Acesse a [versão web](https://agrosense-app.vercel.app/agro/) ou abra o projeto Android em `APP`.
+
 | O que você quer fazer | Onde começar |
 | --- | --- |
 | Instalar, entrar e testar o app | [Aplicativo web e Android](APP/README.md) |
@@ -302,6 +304,7 @@ Exemplo ilustrativo, sem representar uma leitura real:
 | `air_rh_pct` | Número ou `null` | Umidade relativa do ar, em % |
 | `pressure_hpa` | Número ou `null` | Pressão local do BMP280, em hPa, sem correção ao nível do mar |
 | `soil_raw` | Inteiro | Média de 16 amostras do ADC, de 0 a 4095; zero se desativado |
+| `soil_index_pct` | Número opcional | Índice relativo de 0–100 quando há calibração no transmissor |
 | `soil_enabled` | Booleano | Indica se a leitura de solo está ativada no código |
 
 Falhas ou leituras ambientais inválidas são representadas por `null`. O solo desativado usa zero conforme a regra do protótipo; esse zero não significa solo seco. A entrada analógica desconectada pode produzir valores arbitrários, por isso a ativação é manual. Um percentual de umidade do solo exige calibração seco/molhado com o sensor e o solo utilizados.
@@ -322,7 +325,7 @@ Os valores numéricos de RSSI/SNR não são incluídos nessa saída. O parser su
 
 ## Calibração do solo
 
-O utilitário [`CalibracaoSolo`](CalibracaoSolo/README.md) captura referências seca e saturada no GPIO34. Preencha `Transmissor/SoilCalibrationConfig.h` com as médias medidas e regrave a estação. As referências começam desabilitadas; não há valores universais prontos. O índice relativo de dois pontos aparece somente no Serial do transmissor, sem alterar o JSON `soil_raw` ou o frontend de teste. Para teor de água e decisões de irrigação, é necessária calibração específica com amostras de referência. Consulte o guia para procedimento, limitações e fontes.
+O utilitário [`CalibracaoSolo`](CalibracaoSolo/README.md) captura referências seca e saturada no GPIO34. Preencha `Transmissor/SoilCalibrationConfig.h` com as médias medidas e regrave a estação. As referências começam desabilitadas; não há valores universais prontos. Quando calibrado, o transmissor envia `soil_index_pct` como índice relativo de 0–100 e continua enviando `soil_raw`. Leituras antigas podem ser convertidas no app com as referências da estação. Para teor de água e decisões de irrigação, é necessária calibração específica com amostras de referência. Consulte o guia para procedimento, limitações e fontes.
 
 ## Classificação do sinal por estação
 
@@ -371,7 +374,7 @@ npm test
 npm run build
 ```
 
-Os testes cobrem autenticação, proteção de rotas/telas, sessão e os fluxos demonstrativos de cadastro de dispositivos. As respostas do Supabase são simuladas; esses testes não criam usuários nem enviam e-mails reais.
+Os testes cobrem autenticação, sessão, rotas, telemetria, calibração e BLE com respostas simuladas. As respostas do Supabase são simuladas; esses testes não criam usuários nem enviam e-mails reais.
 
 Para Android, execute em `APP`:
 
@@ -423,7 +426,7 @@ O modem real responde às consultas AT com o valor consultado, sem `OK` adiciona
 - A chave publishable do Supabase é pública; os dados futuros precisam de autorização no servidor/banco, não apenas de proteção visual das telas.
 - Use nomes únicos e curtos para as estações. `NODE_ID` é identificação, não autenticação de um dispositivo.
 - A chave de rádio deve ser compatível entre os módulos; o código atual não configura nem revela essa chave.
-- Não considere as telas de provisionamento como uma implementação real de Bluetooth ou cadastro de hardware.
+- O provisionamento BLE está no app Android e precisa de teste físico. A descoberta e o pareamento LoRa são etapas separadas.
 
 ## Próximas etapas
 
@@ -436,7 +439,8 @@ O modem real responde às consultas AT com o valor consultado, sem `OK` adiciona
 - [x] Implementar e validar o encaminhamento Wi-Fi/HTTPS das coletas pelo receptor.
 - [ ] Vincular dispositivos e áreas a usuários com autorização adequada.
 - [ ] Substituir os dados demonstrativos do aplicativo por dados reais.
-- [ ] Implementar o provisionamento real dos dispositivos, se confirmado no escopo.
+- [x] Preparar o provisionamento BLE Android e o cadastro de dispositivos por conta.
+- [ ] Validar o BLE nos ESP32 e implementar descoberta e senha LoRa.
 - [ ] Integrar dados meteorológicos reais e validar as regras de apoio à irrigação.
 - [ ] Adicionar integração contínua e testes de ponta a ponta conforme as integrações evoluírem.
 

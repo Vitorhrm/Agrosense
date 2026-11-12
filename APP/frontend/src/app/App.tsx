@@ -90,7 +90,7 @@ export default function App() {
     alerts: <AlertsScreen go={go} onOpenArea={openArea} onOpenForecast={openForecast} onOpenStation={name => openAreaScreen("station", name)} />,
     profile: <ProfileScreen go={go} user={user} onLogout={handleLogout} />,
     "new-area": <NewArea go={go} />,
-    "new-station": <NewStation go={go} areaName={selectedArea.name} />,
+    "new-station": user && <NewStation key={user.id} go={go} userId={user.id} />,
     crop: <CropScreen go={go} />,
     history: <HistoryScreen go={go} />,
     telemetry: user && <TelemetryScreen key={user.id} userId={user.id} go={go} />,

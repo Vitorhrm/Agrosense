@@ -11,8 +11,8 @@ beforeEach(() => {
   window.history.replaceState(null, "", "/")
   mocks.subscribe.mockImplementation(callback => { listener = callback; callback(null); return vi.fn() })
 })
-it("bloqueia acesso por hash a uma tela privada", async () => {
-  window.history.replaceState(null, "", "/#profile")
+it.each(["profile", "new-station"])("bloqueia acesso por hash à rota privada %s", async route => {
+  window.history.replaceState(null, "", `/#${route}`)
   render(<App />)
   expect(await screen.findByRole("heading", { name: "Bem-vindo de volta" })).toBeInTheDocument()
   expect(window.location.hash).toBe("#login")
@@ -63,18 +63,17 @@ it("restaura sessão e faz logout no perfil", async () => {
 })
 
 
-it("mantém a área selecionada ao abrir o cadastro da estação", async () => {
+it("mantém a área demonstrativa e abre a configuração Android sem vincular dados fictícios", async () => {
   mocks.subscribe.mockImplementation(callback => { callback(user); return vi.fn() })
   render(<App />)
   const actions = userEvent.setup()
   await actions.click(await screen.findByRole("button", { name: "Áreas" }))
   await actions.click(screen.getByRole("button", { name: "Abrir Horta Leste" }))
   expect(screen.getByRole("heading", { name: "Horta Leste" })).toBeInTheDocument()
-  await actions.click(screen.getByRole("button", { name: "Cadastrar dispositivo" }))
-  expect(screen.getByRole("region", { name: "Cadastro de dispositivo em Horta Leste" })).toBeInTheDocument()
-  await actions.click(screen.getByRole("button", { name: "Fechar cadastro" }))
-  await actions.click(screen.getByRole("button", { name: "Adicionar" }))
-  expect(screen.getByRole("region", { name: "Cadastro de dispositivo em Horta Leste" })).toBeInTheDocument()
+  await actions.click(screen.getByRole("button", { name: "Configurar dispositivos" }))
+  expect(screen.getByRole("region", { name: "Configuração de dispositivos" })).toBeInTheDocument()
+  expect(screen.getByText(/exige o aplicativo Android/)).toBeInTheDocument()
+  expect(screen.queryByText("Horta Leste")).not.toBeInTheDocument()
   expect(window.history.state.areaName).toBe("Horta Leste")
 })
 

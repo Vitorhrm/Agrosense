@@ -8,8 +8,16 @@ const output = resolve("public/agro");
 const npm = process.env.npm_execpath;
 if (!npm) throw new Error("Execute via npm run build:web.");
 
+const backendSecrets = new Set([
+  "SUPABASE_SECRET_KEY", "SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_DB_PASSWORD",
+  "NVIDIA_API_KEY", "DASHBOARD_PASSWORD", "SESSION_SECRET", "INGEST_TOKEN",
+]);
+const buildEnv = Object.fromEntries(
+  Object.entries(process.env).filter(([name]) => !backendSecrets.has(name.toUpperCase())),
+);
+
 function run(command, args, cwd) {
-  const result = spawnSync(command, args, { cwd, stdio: "inherit" });
+  const result = spawnSync(command, args, { cwd, stdio: "inherit", env: buildEnv });
   if (result.error) throw result.error;
   if (result.status !== 0) throw new Error(command + " falhou.");
 }

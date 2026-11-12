@@ -19,6 +19,7 @@ interface Reading {
   air_rh_pct: number | null
   pressure_hpa: number | null
   soil_raw: number | null
+  soil_index_pct: number | null
   soil_enabled: boolean | null
   signal: string
 }
@@ -44,6 +45,10 @@ function validAdc(value: number | null): value is number {
 
 function soilIndex(reading: Reading, calibration: StationAccess | undefined) {
   if (reading.soil_enabled === false) return "Desativado"
+  const recorded = reading.soil_index_pct
+  if (typeof recorded === "number" && Number.isFinite(recorded) && recorded >= 0 && recorded <= 100) {
+    return formatMeasurement(recorded, "%") + " · na coleta"
+  }
   if (!calibration || !validAdc(reading.soil_raw)) return "Sem calibração"
   const { dry_adc, wet_adc } = calibration
   if (!validAdc(dry_adc) || !validAdc(wet_adc) || dry_adc === wet_adc) return "Sem calibração"
@@ -65,7 +70,7 @@ export function TelemetryScreen({ go, userId }: { go: (screen: Screen) => void; 
         const client = getSupabase()
         let readingsQuery = client
           .from("agro_readings")
-          .select("id,node,received_at,temp_c,air_rh_pct,pressure_hpa,soil_raw,soil_enabled,signal")
+          .select("id,node,received_at,temp_c,air_rh_pct,pressure_hpa,soil_raw,soil_index_pct,soil_enabled,signal")
         if (selectedStation) readingsQuery = readingsQuery.eq("node", selectedStation)
 
         const [readings, access] = await Promise.all([

@@ -4,13 +4,13 @@
 
 O projeto investiga como dados meteorológicos e medições de uma estação ESP32 com sensores de solo podem apoiar decisões de irrigação. Esta pasta contém o aplicativo principal do protótipo; o repositório completo também inclui os firmwares e a API, descritos no [README geral](../README.md).
 
-O painel em `../backend/public` foi criado somente para testar a telemetria e a IA. Ele não substitui este aplicativo. A coleta física, o envio LoRa e o encaminhamento Wi-Fi/HTTPS foram validados em bancada em 05/11/2026; a integração dessas leituras às telas deste aplicativo continua pendente.
+O painel em `../backend/public` foi criado somente para testar a telemetria e a IA. Ele não substitui este aplicativo. A coleta física, o envio LoRa e o encaminhamento Wi-Fi/HTTPS foram validados em bancada em 05/11/2026; a tela Telemetria consulta as leituras autorizadas no novo banco. A validação física no novo ambiente deve ser repetida.
 
 | Área | Estado atual |
 | --- | --- |
 | Aplicativo | Interface React/TypeScript para web e Android e autenticação por e-mail via Supabase |
-| Monitoramento agrícola | Telas com dados demonstrativos |
-| Integrações em desenvolvimento | Estação ESP32, dados meteorológicos reais, provisionamento de dispositivos e persistência de medições |
+| Monitoramento agrícola | Telemetria real e telas de exemplo identificadas |
+| Integrações | Supabase, Vercel, Open-Meteo e BLE no Android |
 
 Aplicativo acadêmico de monitoramento agrícola e apoio à irrigação, com interface em **React e TypeScript** e autenticação pelo **Supabase**. A mesma interface pode ser executada no navegador ou empacotada como aplicativo Android.
 
@@ -33,18 +33,17 @@ Na página inicial, **Telemetria** mostra as coletas reais das estações autori
 
 Recuperação de senha, login social, integração com sensores e persistência dos dados agrícolas ainda não estão implementados.
 
-## Cadastro de dispositivos (prévia)
+## Configurar dispositivos no Android
 
-Dentro de cada área, o botão **Cadastrar dispositivo** abre duas opções:
+1. Entre na conta e abra **Configurar dispositivos**.
+2. Reinicie o ESP32. Ele anuncia `AgroSense-TX` ou `AgroSense-RX` por cinco minutos. Leia o PIN na serial USB a 115200 baud.
+3. Escolha o tipo, permita a busca Bluetooth e selecione o dispositivo. Digite o PIN no diálogo do Android.
+4. Defina o nome. Vincule o transmissor autorizado a uma área. O receptor pode ficar geral ou vinculado a uma área. Informe o SSID e a senha do Wi-Fi no receptor.
+5. Aguarde a confirmação do ESP32. Se o cadastro no banco falhar, repita apenas essa etapa pelo app. Reconecte para conferir o estado da rede. Para editar depois, reinicie o ESP32 e refaça a conexão.
 
-- **Cadastrar transmissor:** seleção de um ESP32 de exemplo por Bluetooth, preenchimento do SSID e senha do Wi-Fi e do identificador da rede LoRa.
-- **Cadastrar estação:** seleção de um ESP32 de exemplo por Bluetooth, definição do nome e escolha de um transmissor LoRa em uma lista simulada, com RSSI em dBm.
+O Wi-Fi é configurado por BLE com pareamento autenticado e a senha fica no receptor. O Supabase recebe os metadados e o vínculo da área. A busca e a senha LoRa seguem pendentes. O rádio preserva os parâmetros do modem. O APK foi compilado, e o pareamento físico precisa ser verificado na bancada.
 
-O fluxo representa a futura comunicação: o celular conecta ao ESP32 por Bluetooth; no cadastro da estação, o próprio ESP32 faz o scan LoRa e devolve os resultados ao celular. RSSI é intensidade do sinal, enquanto o identificador LoRa distingue o transmissor/rede.
-
-**Esta etapa é somente uma prévia de interface.** Não solicita permissões Bluetooth, não descobre dispositivos reais, não envia configurações ao ESP32 e não salva cadastros no Supabase. Use dados fictícios. A senha permanece apenas no estado temporário do formulário e é descartada ao concluir, cancelar ou voltar à busca.
-
-O componente e seus estilos ficam em `frontend/src/features/devices/DeviceRegistration`; os dispositivos fictícios ficam em `provisioning.demo.ts`. A seleção de área é mantida durante a navegação para que o cadastro indique a área correta.
+No navegador, use o mesmo login, áreas, culturas, previsão e telemetria. O provisionamento usa o Bluetooth nativo do Android.
 
 ## Organização do projeto
 
@@ -169,7 +168,7 @@ Execute estes comandos dentro de `frontend`:
 | `npm run build:android` | Verificar tipos e gerar os assets do APK |
 | `npm run format` | Formatar o código |
 
-A suíte atual contém 18 testes que cobrem formulários, validação, erros de autenticação, bloqueio de acesso por hash, restauração e expiração da sessão, logout e comunicação com o SDK. Também verificam as opções de dispositivos, os formulários de transmissor/estação, a seleção LoRa e o contexto da área. As respostas do Supabase são simuladas nesses testes; eles não criam contas nem enviam e-mails reais.
+A suíte cobre autenticação, sessão, áreas demonstrativas, telemetria, calibração e cadastro Bluetooth com dispositivo simulado.
 
 Para uma validação manual completa, teste também cadastro e login no seu projeto Supabase, reabertura do aplicativo com sessão ativa, saída da conta e comportamento sem conexão. Testes automatizados e compilação não substituem essa conferência no navegador e no Android.
 

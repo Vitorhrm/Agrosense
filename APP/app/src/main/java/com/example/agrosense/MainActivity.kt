@@ -12,10 +12,13 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.webkit.WebViewAssetLoader
 import androidx.webkit.WebViewClientCompat
+import androidx.webkit.WebViewCompat
+import androidx.webkit.WebViewFeature
 
 /** Casca Android mínima: exibe o React local. Autenticação e regras ficam no TypeScript. */
 class MainActivity : AppCompatActivity() {
     private lateinit var webView: WebView
+    private lateinit var provisioning: DeviceProvisioning
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -56,10 +59,34 @@ class MainActivity : AppCompatActivity() {
                 if (webView.canGoBack()) webView.goBack() else finish()
             }
         })
+        provisioning = DeviceProvisioning(this) { message ->
+            if (!isDestroyed) webView.evaluateJavascript(
+                "window.dispatchEvent(new CustomEvent('agrosense-ble',{detail:$message}))", null,
+            )
+        }
+        val localOrigin = setOf("https://appassets.androidplatform.net")
+        if (WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER) &&
+            WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)) {
+            WebViewCompat.addWebMessageListener(webView, "AgroSenseNativeBle", localOrigin) { _, message, _, isMainFrame, _ ->
+                if (isMainFrame) message.data?.let { provisioning.dispatch(it) }
+            }
+            WebViewCompat.addDocumentStartJavaScript(webView, """
+                if (window === window.top && window.AgroSenseNativeBle) {
+                  const post = (message) => window.AgroSenseNativeBle.postMessage(JSON.stringify(message));
+                  window.AgroSenseBle = Object.freeze({
+                    scan: (role) => post({action:'scan', role}),
+                    connect: (id) => post({action:'connect', id}),
+                    send: (json) => post({action:'send', json}),
+                    disconnect: () => post({action:'disconnect'})
+                  });
+                }
+            """.trimIndent(), localOrigin)
+        }
         webView.loadUrl("https://appassets.androidplatform.net/assets/agrosense/index.html")
     }
 
     override fun onDestroy() {
+        if (::provisioning.isInitialized) provisioning.close()
         webView.destroy()
         super.onDestroy()
     }

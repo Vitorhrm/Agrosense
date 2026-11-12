@@ -37,7 +37,8 @@ function AreaForecast({ latitude, longitude }: { latitude: number; longitude: nu
   useEffect(() => {
     const controller = new AbortController()
     const base = import.meta.env.VITE_AGROSENSE_API_URL || window.location.origin
-    const query = new URLSearchParams({ lat: String(latitude), lon: String(longitude) })
+    // A previsão não precisa da precisão completa da coordenada cadastrada.
+    const query = new URLSearchParams({ lat: latitude.toFixed(3), lon: longitude.toFixed(3) })
     fetch(new URL("/api/forecast?" + query, base), { signal: controller.signal })
       .then(async response => {
         if (!response.ok) throw new Error()

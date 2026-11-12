@@ -213,3 +213,11 @@ Firmware Wi-Fi/HTTPS gravado com sucesso no receptor COM5.
 Conexao ao roteador Galaxy S23 confirmada pelo Serial e pelo usuario.
 Coletas reais da station1 foram recebidas pela API e persistidas no Supabase,
 com a confirmacao Nuvem: coleta entregue e exibicao no painel publicado.
+
+CONFIGURACAO NO ANDROID
+Reinicie o ESP32 para anunciar AgroSense-RX por cinco minutos. Use o PIN
+exibido na serial USB a 115200. O app configura nome e Wi-Fi e permite
+cadastrar o gateway como geral ou associar seu registro a uma area.
+A senha Wi-Fi e gravada localmente. A URL e o token de ingestao permanecem
+em CloudConfig.local.h. O modem conserva canal, nivel e chave RF atuais.
+A busca de SSID e a senha LoRa ainda nao estao implementadas.

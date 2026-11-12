@@ -33,3 +33,4 @@ Receptor/CloudConfig.local.h
 **/.venv/
 **/venv/
 *.pyc
+/graphify-out/

@@ -6,7 +6,6 @@ import { Metric } from "../../components/Metric/Metric"
 import { RecommendationCard } from "../../components/RecommendationCard/RecommendationCard"
 import { HourlyForecast } from "../../components/HourlyForecast/HourlyForecast"
 import type { Screen } from "../../types/navigation"
-import { DeviceRegistration } from "../../features/devices/DeviceRegistration/DeviceRegistration"
 import { areas, stations } from "../../data/demo"
 import "./AreaScreen.css"
 
@@ -28,7 +27,6 @@ export function AreaScreen({ go, area }: { area: typeof areas[number], go: (scre
         }
       />
       <section className="page">
-        <DeviceRegistration areaName={area.name} />
         <div className="area-overview">
           <div>
             <span className="area-symbol">
@@ -89,7 +87,7 @@ export function AreaScreen({ go, area }: { area: typeof areas[number], go: (scre
             <span>ESTAÇÕES</span>
             <p>{area.online} online · {area.offline} offline</p>
           </div>
-          <button onClick={() => go("new-station")}>Adicionar</button>
+          <button onClick={() => go("new-station")}>Configurar dispositivos</button>
         </div>
         <div className="station-list">
           {hasDetails && stations.map((station) => (

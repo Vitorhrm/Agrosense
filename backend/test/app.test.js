@@ -75,3 +75,11 @@ test('login rejeita configuracao curta sem emitir cookie', async () => {
     assert.equal(response.headers.has('set-cookie'), false);
   }
 });
+
+test('preserva índice relativo medido e rejeita índice fora da escala ou com solo desativado', () => {
+  assert.equal(validateReading({...sample, soil_index_pct: 57.2}).soil_index_pct, 57.2);
+  assert.equal(validateReading(sample).soil_index_pct, undefined);
+  for (const invalid of [{soil_index_pct: -1}, {soil_index_pct: 101}, {soil_index_pct: '25'}, {soil_index_pct: 25, soil_enabled: false, soil_raw: 0}]) {
+    assert.throws(() => validateReading({...sample, ...invalid}));
+  }
+});
