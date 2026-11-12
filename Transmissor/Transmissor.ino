@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include "StationId.h"
 // Tempo entre inicios de coleta e envio: 10000 ms = 10 segundos.
 constexpr uint32_t COLLECTION_INTERVAL_MS = 10000;
 constexpr char NODE_ID[] = "station1"; // Nome UNICO por station: station1, station2 etc.
@@ -9,7 +10,8 @@ constexpr int I2C_SCL_PIN = 22; // SCL do modulo AHT20 + BMP280.
 constexpr int LORA_RX_PIN = 16; // Recebe do TX do LoRa.
 constexpr int LORA_TX_PIN = 17; // Envia ao RX do LoRa.
 constexpr uint32_t LORA_BAUD_RATE = 9600; // Deve coincidir com a UART do modem local.
-static_assert(sizeof(NODE_ID) > 1 && sizeof(NODE_ID) <= 25, "NODE_ID deve ter de 1 a 24 bytes.");
+static_assert(isValidStationId(NODE_ID, sizeof(NODE_ID) - 1),
+              "NODE_ID deve ter de 1 a 24 caracteres de A-Z, a-z, 0-9, _ ou -.");
 
 #include "SensorReadings.h"
 #include "RadioLink.h"

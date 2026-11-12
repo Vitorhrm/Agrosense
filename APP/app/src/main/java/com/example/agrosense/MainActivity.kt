@@ -53,9 +53,7 @@ class MainActivity : AppCompatActivity() {
         }
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
-                webView.evaluateJavascript("window.history.state ? (window.history.back(), true) : false") { handled ->
-                    if (handled != "true") finish()
-                }
+                if (webView.canGoBack()) webView.goBack() else finish()
             }
         })
         webView.loadUrl("https://appassets.androidplatform.net/assets/agrosense/index.html")

@@ -1,7 +1,8 @@
-import { Check, CloudRain } from "lucide-react"
+import { CloudRain } from "lucide-react"
+import type { areas } from "../../data/demo"
 import "./RecommendationCard.css"
 
-export function RecommendationCard() {
+export function RecommendationCard({ area }: { area: typeof areas[number] }) {
   return (
     <article className="recommend-card">
       <div className="recommend-top">
@@ -10,34 +11,22 @@ export function RecommendationCard() {
         </span>
         <div>
           <span>RECOMENDAÇÃO DE IRRIGAÇÃO</span>
-          <h3>AGUARDAR CHUVA</h3>
+          <h3>{area.recommendation}</h3>
         </div>
       </div>
-      <p>
-        A umidade média do solo está abaixo do recomendado para o milho, porém
-        há alta probabilidade de chuva significativa nas próximas horas.
-      </p>
       <div className="recommend-grid">
         <div>
           <span>Umidade atual</span>
-          <strong>31%</strong>
-        </div>
-        <div>
-          <span>Limite recomendado</span>
-          <strong>35%</strong>
+          <strong>{area.moisture}%</strong>
         </div>
         <div>
           <span>Próxima chuva</span>
-          <strong>3h 40min</strong>
+          <strong>{area.nextRain}</strong>
         </div>
         <div>
           <span>Precipitação</span>
-          <strong>11,4 mm</strong>
+          <strong>{area.precipitation}</strong>
         </div>
-      </div>
-      <div className="reason">
-        <Check size={16} />
-        <span>É seguro aguardar a precipitação prevista antes de irrigar.</span>
       </div>
     </article>
   )

@@ -11,7 +11,8 @@ createServer(async (req, res) => {
     if (req.url.startsWith('/api/')) {
       const chunks = []; let size = 0;
       for await (const chunk of req) { size += chunk.length; if (size > 4096) { res.writeHead(413); return res.end(); } chunks.push(chunk); }
-      const request = new Request(`http://127.0.0.1:3000${req.url}`, {method: req.method, headers: req.headers,
+      const host = req.headers.host || '127.0.0.1:3000';
+      const request = new Request(`http://${host}${req.url}`, {method: req.method, headers: req.headers,
         ...(req.method !== 'GET' && req.method !== 'HEAD' ? {body: Buffer.concat(chunks)} : {})});
       const response = await handle(request);
       res.writeHead(response.status, Object.fromEntries(response.headers));

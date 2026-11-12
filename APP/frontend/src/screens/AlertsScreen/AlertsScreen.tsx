@@ -5,7 +5,12 @@ import { Badge } from "../../components/Badge/Badge"
 import type { Screen } from "../../types/navigation"
 import "./AlertsScreen.css"
 
-export function AlertsScreen({ go }: { go: (screen: Screen) => void }) {
+export function AlertsScreen({ go, onOpenArea, onOpenForecast, onOpenStation }: {
+  go: (screen: Screen) => void
+  onOpenArea: (name: string) => void
+  onOpenForecast: (name: string) => void
+  onOpenStation: (name: string) => void
+}) {
   return (
     <AppShell screen="alerts" go={go}>
       <TopBar
@@ -29,7 +34,7 @@ export function AlertsScreen({ go }: { go: (screen: Screen) => void }) {
           <span>CRÍTICOS</span>
           <Badge tone="danger">2 alertas</Badge>
         </div>
-        <button className="alert-card critical" onClick={() => go("station")}>
+        <button className="alert-card critical" onClick={() => onOpenStation("Talhão Norte")}>
           <span className="alert-icon">
             <WifiOff size={21} />
           </span>
@@ -66,7 +71,7 @@ export function AlertsScreen({ go }: { go: (screen: Screen) => void }) {
         <div className="alert-group-title">
           <span>IRRIGAÇÃO</span>
         </div>
-        <button className="alert-card irrigation" onClick={() => go("area")}>
+        <button className="alert-card irrigation" onClick={() => onOpenArea("Fazenda Sul")}>
           <span className="alert-icon">
             <Droplets size={21} />
           </span>
@@ -88,7 +93,7 @@ export function AlertsScreen({ go }: { go: (screen: Screen) => void }) {
         </div>
         <button
           className="alert-card climate"
-          onClick={() => go("weather-detail")}
+          onClick={() => onOpenForecast("Talhão Norte")}
         >
           <span className="alert-icon">
             <CloudRain size={21} />

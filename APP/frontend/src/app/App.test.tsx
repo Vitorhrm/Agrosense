@@ -68,7 +68,7 @@ it("mantém a área selecionada ao abrir o cadastro da estação", async () => {
   render(<App />)
   const actions = userEvent.setup()
   await actions.click(await screen.findByRole("button", { name: "Áreas" }))
-  await actions.click(screen.getByRole("heading", { name: "Horta Leste" }))
+  await actions.click(screen.getByRole("button", { name: "Abrir Horta Leste" }))
   expect(screen.getByRole("heading", { name: "Horta Leste" })).toBeInTheDocument()
   await actions.click(screen.getByRole("button", { name: "Cadastrar dispositivo" }))
   expect(screen.getByRole("region", { name: "Cadastro de dispositivo em Horta Leste" })).toBeInTheDocument()
@@ -78,3 +78,38 @@ it("mantém a área selecionada ao abrir o cadastro da estação", async () => {
   expect(window.history.state.areaName).toBe("Horta Leste")
 })
 
+
+it("abre uma área pelo teclado", async () => {
+  mocks.subscribe.mockImplementation(callback => { callback(user); return vi.fn() })
+  const actions = userEvent.setup()
+  render(<App />)
+  await actions.click(await screen.findByRole("button", { name: "Áreas" }))
+  const card = screen.getByRole("button", { name: "Abrir Fazenda Sul" })
+  card.focus()
+  await actions.keyboard("{Enter}")
+  expect(window.history.state.areaName).toBe("Fazenda Sul")
+  expect(screen.getByRole("heading", { name: "Fazenda Sul", level: 1 })).toBeInTheDocument()
+})
+
+it("abre a previsão da área escolhida e mantém o contexto no histórico", async () => {
+  mocks.subscribe.mockImplementation(callback => { callback(user); return vi.fn() })
+  const actions = userEvent.setup()
+  render(<App />)
+  await actions.click(await screen.findByRole("button", { name: "Clima" }))
+  await actions.click(screen.getByRole("heading", { name: "Fazenda Sul" }))
+  expect(screen.getByRole("heading", { name: "Clima de Fazenda Sul" })).toBeInTheDocument()
+  expect(screen.getByText("31°")).toBeInTheDocument()
+  expect(window.history.state.areaName).toBe("Fazenda Sul")
+})
+
+it("abre a área do alerta de irrigação", async () => {
+  mocks.subscribe.mockImplementation(callback => { callback(user); return vi.fn() })
+  const actions = userEvent.setup()
+  render(<App />)
+  await actions.click(await screen.findByRole("button", { name: /2 alertas precisam/ }))
+  await actions.click(screen.getByRole("heading", { name: "Irrigação recomendada" }))
+  expect(screen.getByRole("heading", { name: "Fazenda Sul", level: 1 })).toBeInTheDocument()
+  expect(screen.getByText("4 online · 0 offline")).toBeInTheDocument()
+  expect(screen.getByRole("heading", { name: "IRRIGAR" })).toBeInTheDocument()
+  expect(screen.queryByText("Estação Sul")).not.toBeInTheDocument()
+})

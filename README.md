@@ -1,48 +1,27 @@
 # AgroSense
 
-**Sistema acadêmico de monitoramento agrícola e apoio à decisão de irrigação**, desenvolvido como Trabalho de Conclusão de Curso do Bacharelado em Sistemas de Informação do IFMG.
+Protótipo de TCC do curso de Sistemas de Informação do IFMG, Campus Ouro Branco. Reúne medições de uma estação ESP32 e previsão meteorológica por área para apoiar o planejamento da irrigação.
 
-Este repositório reúne o projeto completo: o aplicativo web/Android em `APP`, o firmware das estações de coleta, o firmware do receptor LoRa e a API de telemetria. O objetivo é integrar medições ambientais e do solo a uma interface que ajude a acompanhar as condições do cultivo.
+## Começar por aqui
 
-O frontend em `backend/public` foi criado **somente para teste** do recebimento de dados e dos resumos da IA. O aplicativo principal é o de `APP`; sua integração com a API ainda está pendente.
+| O que você quer fazer | Onde começar |
+| --- | --- |
+| Instalar, entrar e testar o app | [Aplicativo web e Android](APP/README.md) |
+| Preparar o Supabase e publicar a API | [Backend](backend/README.md) |
+| Configurar os dois ESP32 | [Montagem e firmware](#montar-e-programar-os-esp32) |
+| Calibrar a leitura do solo | [Roteiro de calibração](CalibracaoSolo/README.md) |
+| Conferir protocolo, RSSI e pareamento | [Protocolo de dados](#protocolo-de-dados) · [RSSI](RSSI-LEIA-ME.md) |
 
-> **Em desenvolvimento.** O aplicativo já possui autenticação pelo Supabase, mas as informações agrícolas exibidas ainda são demonstrativas. A coleta e a recepção LoRa foram confirmadas na bancada, incluindo solo no GPIO34. A API e o painel experimental estão publicados na Vercel; o receptor agora implementa Wi-Fi/HTTPS. A integração com o aplicativo original em APP ainda está pendente.
+## O que o protótipo faz
 
-## Conteúdo
+1. O transmissor mede temperatura e umidade do ar com AHT20, pressão local com BMP280 e o sinal analógico do sensor capacitivo de solo.
+2. O receptor recebe o JSON por LoRa, classifica o sinal e envia a leitura por HTTPS à API. O banco grava a hora de recebimento.
+3. No aplicativo web ou Android, faça login, abra **Áreas e culturas** e cadastre uma área. Informe coordenadas para consultar a previsão por área. Uma estação autorizada pode ser vinculada à área e receber as referências de calibração.
+4. Abra **Telemetria** para ver as últimas coletas da conta. As telas de demonstração continuam identificadas. O painel Lab é separado e serve para diagnosticar ingestão e, se configurado, resumir as coletas com NVIDIA.
 
-- [Visão geral e estado atual](#visão-geral-e-estado-atual)
-- [Arquitetura](#arquitetura)
-- [Organização do repositório](#organização-do-repositório)
-- [Tecnologias](#tecnologias)
-- [Preparar o ambiente](#preparar-o-ambiente)
-- [Executar o aplicativo web](#executar-o-aplicativo-web)
-- [Executar o aplicativo Android](#executar-o-aplicativo-android)
-- [Montar e programar os ESP32](#montar-e-programar-os-esp32)
-- [Protocolo de dados](#protocolo-de-dados)
-- [Calibração do solo](#calibração-do-solo)
-- [Classificação do sinal por estação](#classificação-do-sinal-por-estação)
-- [Descoberta e pareamento LoRa](#descoberta-e-pareamento-lora)
-- [Backend e Supabase](#backend-e-supabase)
-- [Testes e validação](#testes-e-validação)
-- [Solução de problemas](#solução-de-problemas)
-- [Cuidados de configuração](#cuidados-de-configuração)
-- [Próximas etapas](#próximas-etapas)
-- [Contribuição e manutenção](#contribuição-e-manutenção)
-- [Autor, licença e referências](#autor-licença-e-referências)
+Os parâmetros da cultura são definidos por área: cultura, estágio, limites inferior e superior de solo com unidade, volume e janela de chuva, Kc, fonte técnica e condições de aplicação. O artigo não estabelece limites universais. Dados de chuva são previsão, enquanto os valores do sensor vêm da estação. O protótipo exibe o ADC e pode exibir um índice relativo após calibração. As regras agronômicas e a combinação de previsão com telemetria para produzir recomendações exigem validação antes do uso em decisões de irrigação.
 
-## Visão geral e estado atual
-
-| Parte | Responsabilidade | Estado atual |
-| --- | --- | --- |
-| `APP` | Interface web e Android, autenticação e visualização | Cadastro/login reais pelo Supabase; telas agrícolas com dados demonstrativos |
-| `Transmissor` | Estação ESP32 que lê sensores e envia JSON pelo LoRa | Coleta AHT20/BMP280 e solo no GPIO34; recebimento físico confirmado |
-| `Receptor` | ESP32 que recebe as coletas e avalia o RSSI de cada estação | Classifica RSSI por estação, imprime no Serial e encaminha por Wi-Fi/HTTPS quando configurado |
-| `backend` | API HTTPS, histórico Supabase e painel experimental | Publicado na Vercel, com resumo NVIDIA solicitado pelo usuário |
-| Supabase | Serviço externo de autenticação usado pelo aplicativo | Integração implementada; depende da configuração do projeto do usuário |
-
-O protótipo não aciona bombas ou válvulas. As recomendações agrícolas e os dados de clima apresentados na interface ainda não representam um processamento de leituras reais. O fluxo Bluetooth de cadastro de dispositivos é uma prévia de interface, sem descoberta, provisionamento ou gravação reais.
-
-**Nomenclatura:** neste repositório, `Transmissor` é a estação de sensores que envia as coletas; `Receptor` é o ESP32 que recebe os pacotes LoRa e os exibe pela USB. A interface de cadastro do aplicativo ainda é demonstrativa e usa termos de provisionamento que deverão ser alinhados quando a integração física for implementada.
+Para bancada, comece com **um transmissor**, **um receptor** e o identificador **station1**. Os ensaios anteriores com LoRa e Wi-Fi descritos abaixo são históricos. A publicação em um novo ambiente exige repetir os testes de ponta a ponta.
 
 ## Arquitetura
 
@@ -54,11 +33,12 @@ flowchart LR
     Receiver -->|"Wi-Fi / HTTPS"| Backend["API Vercel + painel Lab"]
     Backend --> Database["Supabase · histórico"]
     Backend --> Nvidia["NVIDIA · resumo manual"]
-    Backend -. "API / persistência futuras" .-> App["APP · web / Android"]
+    Backend -->|"Previsão por coordenadas"| App["APP · web / Android"]
+    Database -->|"Telemetria e áreas com RLS"| App
     App -->|"Autenticação implementada"| Supabase["Supabase Auth"]
 ```
 
-A seta tracejada até APP representa a integração futura do aplicativo original. O painel Lab já consulta a API de telemetria. Configure o Wi-Fi do receptor e grave o novo firmware para encaminhar as coletas.
+O aplicativo usa Supabase Auth e políticas por conta para consultar telemetria e gerenciar áreas. O painel Lab consulta a API com credencial própria.
 
 ## Organização do repositório
 
@@ -110,7 +90,7 @@ O projeto Android completo fica dentro de `APP`, incluindo a subpasta `APP/app`.
 | Rádio | DX-LR32-900T22D, comunicação UART e modo transparente |
 | Sensores | AHT20, BMP280 e sensor capacitivo de solo no GPIO34 |
 | Mensagens | JSON, com ArduinoJson 7 no firmware |
-| Backend próprio | Tecnologia ainda não definida |
+| Backend próprio | Node.js, Vercel e Supabase PostgreSQL |
 
 O DX-LR32 é um modem UART. Os firmwares deste repositório não usam a biblioteca `LoRa.h` para rádios SPI e não implementam LoRaWAN.
 
@@ -412,7 +392,7 @@ arduino-cli compile --fqbn esp32:esp32:esp32 Receptor
 
 As compilações anteriores foram verificadas para `ESP32 Dev Module`. Também foram feitos testes de lógica com entradas simuladas durante o desenvolvimento: limites da escala RSSI, respostas AT, fragmentação UART, bytes RSSI especiais, identificação de estações, descarte/recuperação de pacotes, CRC e timeout do AHT20. Esse verificador auxiliar não integra uma suíte executável versionada neste repositório.
 
-**Validação física realizada em 05/11/2026:** o transmissor coletou AHT20, BMP280 e solo no GPIO34. O receptor na COM5 recebeu o JSON por LoRa, classificou o RSSI por `node`, conectou ao Wi-Fi e enviou as coletas por HTTPS. O recebimento no Supabase, a consulta no painel de teste e a geração de resumo NVIDIA foram confirmados. Cinco testes automatizados do backend passaram. Isso não valida a integração com o aplicativo principal em `APP`, nem o alcance e a estabilidade em campo com múltiplas estações.
+**Validação física realizada em 05/11/2026:** o transmissor coletou AHT20, BMP280 e solo no GPIO34. O receptor na COM5 recebeu o JSON por LoRa, classificou o RSSI por `node`, conectou ao Wi-Fi e enviou as coletas por HTTPS. O recebimento no Supabase, a consulta no painel de teste e a geração de resumo NVIDIA foram confirmados. Cinco testes automatizados do backend passaram. Esse ensaio é anterior à integração do aplicativo e não cobre o novo ambiente ou o uso em campo.
 
 Para configurar a rede do receptor, copie `Receptor/WifiConfig.example.h` para `WifiConfig.local.h` e preencha SSID e senha de uma rede de 2,4 GHz. Configure URL e token em `CloudConfig.local.h`, usando `CloudConfig.example.h` como modelo. Os arquivos locais não são versionados. O envio roda em tarefa separada; a recepção LoRa e o Serial continuam ativos sem internet. Consulte o [guia da API](backend/README.md) para certificados HTTPS, fila em RAM, retentativas e variáveis da Vercel.
 

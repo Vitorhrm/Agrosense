@@ -11,7 +11,8 @@ export function AreaCard({
   open: () => void
 }) {
   return (
-    <article className="area-card" onClick={open}>
+    <article className="area-card">
+      <button type="button" className="area-card-open" aria-label={`Abrir ${area.name}`} onClick={open} />
       <div className="area-card-head">
         <div className="crop-icon">
           <Leaf size={22} />

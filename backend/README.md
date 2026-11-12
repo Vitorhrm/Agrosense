@@ -92,3 +92,20 @@ Acesso por senha única atende ao teste pessoal. Ainda faltam contas individuais
 ## Validação realizada em 05/11/2026
 
 Cinco testes automatizados passaram. Firmware do receptor compilado e gravado na COM5 com o core ESP32 3.3.12. Conexão ao Wi-Fi confirmada; coletas reais de station1 chegaram por LoRa, foram enviadas por HTTPS e apareceram no Supabase e no gráfico. A chamada NVIDIA com Nemotron retornou resumo com sucesso. Os registros artificiais de teste foram removidos; o painel acompanha as coletas reais.
+
+## Banco e aplicativo em um ambiente novo
+
+1. Crie um projeto Supabase e aplique `supabase/schema.sql`, seguido de `supabase/migrations/202611120001_station_access.sql`.
+2. Na Vercel, configure as variáveis de `.env.example` para a API. Mantenha `SUPABASE_SECRET_KEY`, `INGEST_TOKEN`, `SESSION_SECRET` e `DASHBOARD_PASSWORD` no ambiente do servidor. A chave NVIDIA é opcional.
+3. No app, use o endereço do projeto Supabase e a chave pública publishable. Configure `VITE_AGROSENSE_API_URL` com a origem da API publicada. Abra o cadastro e confirme o e-mail se o Supabase exigir.
+4. No SQL Editor, autorize o usuário da bancada. Troque o e-mail de exemplo pelo e-mail da conta confirmada:
+
+   ```sql
+   insert into public.agro_station_access (user_id, node)
+   select id, 'station1' from auth.users where email = 'conta@example.com'
+   on conflict do nothing;
+   ```
+
+5. Em **Áreas e culturas**, cadastre a área e associe `station1`. No receptor, configure a URL HTTPS da nova API e o mesmo `INGEST_TOKEN`, usando os arquivos locais ignorados pelo Git. Em **Telemetria**, verifique o horário e o identificador da primeira coleta.
+
+A previsão usa `GET /api/forecast?lat=...&lon=...` e retorna sete dias por coordenada. As coordenadas enviadas ao provedor são arredondadas a três casas decimais. A rota mantém cache de até 15 minutos. Confira as condições de uso antes de adaptar para um ambiente comercial. [Documentação Open-Meteo](https://open-meteo.com/en/docs) · [Termos do serviço](https://open-meteo.com/en/terms).

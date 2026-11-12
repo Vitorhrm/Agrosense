@@ -1,5 +1,8 @@
 /* Estilos de AreaCard. Padrões compartilhados estão em styles/shared.css. */
-.area-card { background: var(--surface); border-radius: 21px; padding: 15px; border: 1px solid #e4ebe7; box-shadow: var(--shadow-sm); cursor: pointer; }
+.area-card { position: relative; background: var(--surface); border-radius: 21px; padding: 15px; border: 1px solid #e4ebe7; box-shadow: var(--shadow-sm); cursor: pointer; }
+
+.area-card-open { position: absolute; inset: 0; z-index: 1; width: 100%; border: 0; border-radius: inherit; background: transparent; cursor: pointer; }
+.area-card-open:focus-visible { outline: 3px solid var(--leaf-700, #17633e); outline-offset: 3px; }
 
 .area-card-head { display: flex; align-items: center; gap: 10px; }
 

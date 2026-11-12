@@ -1,11 +1,49 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "outputDirectory": "public",
-  "functions": {"api/index.js": {"maxDuration": 60}},
-  "rewrites": [{"source": "/api/:path*", "destination": "/api/index"}],
-  "headers": [{"source": "/(.*)", "headers": [
-    {"key": "X-Content-Type-Options", "value": "nosniff"},
-    {"key": "Referrer-Policy", "value": "same-origin"},
-    {"key": "Content-Security-Policy", "value": "default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"}
-  ]}]
+  "functions": {
+    "api/index.js": {
+      "maxDuration": 60
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/lab",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/agro/",
+      "destination": "/agro/index.html"
+    },
+    {
+      "source": "/api/:path*",
+      "destination": "/api/index"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "same-origin"
+        },
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self' https://*.supabase.co; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+        }
+      ]
+    }
+  ],
+  "redirects": [
+    {
+      "source": "/",
+      "destination": "/agro/",
+      "permanent": false
+    }
+  ]
 }

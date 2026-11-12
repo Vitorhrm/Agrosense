@@ -1,0 +1,68 @@
+.telemetry-page {
+  display: grid;
+  gap: 16px;
+}
+
+.telemetry-page .field {
+  margin: 0;
+}
+
+.telemetry-page .field > div:focus-within {
+  outline: 2px solid var(--forest-900);
+  outline-offset: 2px;
+}
+
+.telemetry-status {
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+}
+
+.telemetry-readings {
+  display: grid;
+  gap: 12px;
+  padding: 0;
+  list-style: none;
+}
+
+.telemetry-reading {
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.telemetry-reading header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 4px 12px;
+  margin-bottom: 12px;
+}
+
+.telemetry-reading h2 {
+  font-size: 16px;
+  overflow-wrap: anywhere;
+}
+
+.telemetry-reading time,
+.telemetry-reading dt {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.telemetry-reading dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+
+.telemetry-reading dd {
+  margin: 2px 0 0;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}

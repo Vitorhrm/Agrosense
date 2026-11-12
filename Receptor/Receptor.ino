@@ -4,6 +4,7 @@
 #include "RadioLink.h"
 #include "ReceiverWifi.h"
 #include "CloudUploader.h"
+#include "StationId.h"
 
 constexpr int LORA_RX_PIN = 16; // Recebe do TX do LoRa.
 constexpr int LORA_TX_PIN = 17; // Envia ao RX do LoRa.
@@ -34,9 +35,8 @@ bool validReading(JsonVariantConst reading, float minimum, float maximum) {
 
 // Associa o RSSI deste pacote a station identificada nele e imprime apenas o nome do sinal.
 void handleCollection(JsonDocument& message, int rssiDbm) {
-  if (message["v"] != 1 || !message["node"].is<const char*>() ||
-      strlen(message["node"].as<const char*>()) == 0 ||
-      strlen(message["node"].as<const char*>()) > 24 ||
+  const JsonString node = message["node"].as<JsonString>();
+  if (message["v"] != 1 || !isValidStationId(node.c_str(), node.size()) ||
       !message["seq"].is<uint32_t>() || !message["uptime_ms"].is<uint32_t>() ||
       !message["soil_raw"].is<int>() || !message["soil_enabled"].is<bool>() ||
       message["soil_raw"].as<int>() < 0 || message["soil_raw"].as<int>() > 4095 ||

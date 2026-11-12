@@ -20,7 +20,7 @@ export function validateReading(value) {
     if (value[field] !== null && (typeof value[field] !== 'number' || !Number.isFinite(value[field]) || value[field] < min || value[field] > max)) throw new AppError(400, `Campo ${field} inválido.`);
   }
   if (!Number.isInteger(value.soil_raw) || value.soil_raw < 0 || value.soil_raw > 4095 || (!value.soil_enabled && value.soil_raw !== 0)) throw new AppError(400, 'Leitura de solo inválida.');
-  if (value.event_id !== undefined && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value.event_id)) throw new AppError(400, 'event_id inválido.');
+  if (value.event_id !== undefined && (typeof value.event_id !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value.event_id))) throw new AppError(400, 'event_id inválido.');
   return Object.fromEntries(['v', 'node', 'seq', 'uptime_ms', 'temp_c', 'air_rh_pct', 'pressure_hpa', 'soil_raw', 'soil_enabled', 'signal'].map(key => [key, value[key]]));
 }
 

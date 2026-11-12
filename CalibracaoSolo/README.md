@@ -35,3 +35,9 @@ Para obter teor de água adequado a uma análise quantitativa do TCC, obtenha v�
 - [DFRobot: exemplo e influência da profundidade/compactação](https://wiki.dfrobot.com/sen0193/docs/18036).
 - [Performance of Two Low-Cost Capacitive Soil Moisture Sensors Under Contrasting Texture and Salinity Conditions](https://www.mdpi.com/2073-4441/18/12/1431): aponta limitações de ar/água e necessidade de referências específicas do meio.
 - [Espressif: ADC Arduino-ESP32](https://docs.espressif.com/projects/arduino-esp32/en/latest/api/adc.html): resolução de 12 bits e configuração de atenuação. A calibração elétrica do ADC não é a calibração da umidade do solo.
+
+## Calibração no aplicativo
+
+Em **Áreas e culturas → Estações**, informe as médias seca e saturada em ADC e salve. O aplicativo usa os dois pontos para calcular um índice relativo na escala 0–100, preservando o ADC na tela de telemetria. A alteração no app não exige regravar o firmware de coleta. Para obter os pontos, meça na própria montagem com solo seco e saturado, na mesma profundidade e compactação. Repita as capturas e compare a variação com a distância entre as médias.
+
+A literatura encontrou diferenças entre os resultados de sondas capacitivas v2.0 em oito solos. Os números publicados dependem da montagem e não devem ser copiados para a escala do GPIO34. Para estimar teor volumétrico, colete vários pares de ADC e teor de água de referência no solo usado e valide a curva. [Estudo com sondas v2.0 e oito solos](https://doi.org/10.3390/s26113291) · [Método de referência da DFRobot](https://wiki.dfrobot.com/sen0193/docs/18036).

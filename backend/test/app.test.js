@@ -54,3 +54,24 @@ test('resumo separa stations, reutiliza cache e respeita cooldown', async () => 
   assert.equal((await app(request('/api/summary', {node: 'station1'}, cookie()))).status, 429);
   assert.equal(calls, 1);
 });
+
+test('ingestao rejeita event_id que nao seja string sem consultar o banco', async () => {
+  const app = createApp({env, storeFactory: () => {
+    assert.fail('A entrada inválida não deve consultar o banco.');
+  }});
+  const headers = {Authorization: 'Bearer ' + env.INGEST_TOKEN};
+  const response = await app(request('/api/readings', {
+    ...sample, event_id: ['12345678-1234-4123-8123-123456789abc'],
+  }, headers));
+  assert.equal(response.status, 400);
+});
+
+test('login rejeita configuracao curta sem emitir cookie', async () => {
+  for (const invalid of [{SESSION_SECRET: 'curto'}, {DASHBOARD_PASSWORD: 'curta'}]) {
+    const config = {...env, ...invalid};
+    const app = createApp({env: config});
+    const response = await app(request('/api/login', {password: config.DASHBOARD_PASSWORD}));
+    assert.equal(response.status, 503);
+    assert.equal(response.headers.has('set-cookie'), false);
+  }
+});

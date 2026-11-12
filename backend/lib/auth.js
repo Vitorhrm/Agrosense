@@ -1,15 +1,21 @@
 import {createHash, createHmac, timingSafeEqual} from 'node:crypto';
 import {AppError} from './domain.js';
 
+const MIN_SECRET_LENGTH = 16;
+const MIN_SESSION_SECRET_LENGTH = 32;
+
 export function equalSecret(a, b) {
-  return typeof a === 'string' && typeof b === 'string' && b.length >= 16 && timingSafeEqual(createHash('sha256').update(a).digest(), createHash('sha256').update(b).digest());
+  return typeof a === 'string' && typeof b === 'string' && b.length >= MIN_SECRET_LENGTH && timingSafeEqual(createHash('sha256').update(a).digest(), createHash('sha256').update(b).digest());
+}
+export function dashboardConfigured(env) {
+  return env.DASHBOARD_PASSWORD?.length >= MIN_SECRET_LENGTH && env.SESSION_SECRET?.length >= MIN_SESSION_SECRET_LENGTH;
 }
 export function sessionToken(secret, now = Date.now()) {
   const expires = String(Math.floor(now / 1000) + 86400);
   return expires + '.' + createHmac('sha256', secret).update(expires).digest('hex');
 }
 export function validSession(token, secret, now = Date.now()) {
-  if (!token || !secret || secret.length < 32) return false;
+  if (!token || !secret || secret.length < MIN_SESSION_SECRET_LENGTH) return false;
   const [expires, signature] = token.split('.');
   if (!/^\d+$/.test(expires || '') || Number(expires) <= now / 1000) return false;
   return equalSecret(signature, createHmac('sha256', secret).update(expires).digest('hex'));

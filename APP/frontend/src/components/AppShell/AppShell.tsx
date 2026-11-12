@@ -16,7 +16,7 @@ export function AppShell({
 }) {
   return (
     <div className="app-shell">
-      {!noNav && <aside className="demo-notice">Dados agrícolas de demonstração</aside>}
+      {!noNav && screen !== "telemetry" && screen !== "crop" && <aside className="demo-notice">Dados agrícolas de demonstração</aside>}
       <main className={noNav ? "app-content no-nav" : "app-content"}>
         {children}
       </main>

@@ -39,7 +39,11 @@ val buildReactUi = tasks.register<Exec>("buildReactUi") {
     workingDir(rootProject.projectDir)
     commandLine(localProperties.getProperty("NODE_BINARY", "node"), "scripts/build-frontend.mjs")
     inputs.dir(rootProject.file("frontend/src"))
-    inputs.files(rootProject.file("frontend/package.json"), rootProject.file("frontend/package-lock.json"), rootProject.file("frontend/tsconfig.json"), rootProject.file("frontend/vite.config.ts"), rootProject.file("frontend/vite.android.config.ts"), rootProject.file("frontend/index.html"), rootProject.file("frontend/.env.local"), rootProject.file("scripts/build-frontend.mjs"))
+    inputs.files(rootProject.file("frontend/package.json"), rootProject.file("frontend/package-lock.json"), rootProject.file("frontend/tsconfig.json"), rootProject.file("frontend/vite.config.ts"), rootProject.file("frontend/vite.android.config.ts"), rootProject.file("frontend/index.html"), rootProject.file("scripts/build-frontend.mjs"))
+    inputs.files(rootProject.files("frontend/.env", "frontend/.env.local", "frontend/.env.production", "frontend/.env.production.local"))
+    for (variable in listOf("VITE_SUPABASE_URL", "VITE_SUPABASE_PUBLISHABLE_KEY", "VITE_AGROSENSE_API_URL")) {
+        inputs.property(variable, providers.environmentVariable(variable).orElse(""))
+    }
     outputs.dir(layout.projectDirectory.dir("src/main/assets/agrosense"))
 }
 tasks.configureEach {

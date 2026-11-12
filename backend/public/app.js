@@ -1,5 +1,5 @@
 const $ = id => document.getElementById(id);
-const state = {stations: [], readings: [], metric: 'soil_raw', loading: false, generating: false};
+const state = {stations: [], readings: [], metric: 'soil_raw', loading: false, refreshPending: false, generating: false};
 const metrics = {soil_raw: ['Leitura do solo', 'ADC'], temp_c: ['Temperatura', '°C'], air_rh_pct: ['Umidade do ar', '%'], pressure_hpa: ['Pressão local', 'hPa']};
 const format = (value, suffix, digits = 1) => value === null || value === undefined ? '—' : `${Number(value).toLocaleString('pt-BR', {maximumFractionDigits: digits})} ${suffix}`;
 const date = value => value ? new Date(value).toLocaleString('pt-BR') : '—';
@@ -22,6 +22,7 @@ async function refresh() {
   state.loading = true; $('refresh').disabled = true;
   try {
     const data = await api('/api/stations');
+    if (state.refreshPending) return;
     showDashboard(); state.stations = data.stations;
     const previous = $('station').value;
     $('station').replaceChildren();
@@ -42,12 +43,35 @@ async function refresh() {
     const ageSeconds = Math.max(0, (Date.now() - Date.parse(station.received_at)) / 1000);
     $('connection').textContent = ageSeconds < 60 ? '● Recebendo coletas' : '◷ Sem coleta recente';
     const history = await api(`/api/readings?node=${encodeURIComponent(station.node)}&hours=${$('period').value}`);
+    if (state.refreshPending) return;
     state.readings = history.readings; renderSummary(history.summary);
     $('generate').disabled = !data.ai_configured || state.generating;
     $('generate').title = data.ai_configured ? '' : 'Configure a chave e o modelo NVIDIA na Vercel.';
     $('error').textContent = ''; drawChart();
-  } catch (error) { $('error').textContent = error.message; }
-  finally { state.loading = false; $('refresh').disabled = false; }
+  } catch (error) {
+    if (!state.refreshPending) $('error').textContent = error.message;
+  } finally {
+    state.loading = false; $('refresh').disabled = false;
+    if (state.refreshPending) {
+      state.refreshPending = false;
+      void refresh();
+    }
+  }
+}
+
+function refreshSelection(event) {
+  state.readings = [];
+  if (event.currentTarget === $('station')) {
+    for (const id of ['temp', 'humidity', 'pressure', 'soil', 'signal', 'last-update', 'connection']) {
+      $(id).textContent = '—';
+    }
+    renderSummary(null);
+    $('generate').disabled = true;
+  }
+  $('error').textContent = '';
+  drawChart();
+  if (state.loading) state.refreshPending = true;
+  else void refresh();
 }
 
 // Gráfico local, sem CDN, sem chaves e sem converter a leitura do solo em percentual.
@@ -98,7 +122,7 @@ $('login-form').addEventListener('submit', async event => {
   catch (error) { $('login-error').textContent = error.message; } finally { button.disabled = false; }
 });
 $('logout').addEventListener('click', async () => { await post('/api/logout', {}); showLogin(); });
-$('refresh').addEventListener('click', refresh); $('station').addEventListener('change', refresh); $('period').addEventListener('change', refresh);
+$('refresh').addEventListener('click', refresh); $('station').addEventListener('change', refreshSelection); $('period').addEventListener('change', refreshSelection);
 for (const button of document.querySelectorAll('[data-metric]')) button.addEventListener('click', () => {
   state.metric = button.dataset.metric;
   for (const item of document.querySelectorAll('[data-metric]')) { item.classList.toggle('active', item === button); item.setAttribute('aria-pressed', String(item === button)); }

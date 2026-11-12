@@ -29,7 +29,7 @@ A autenticação e as regras do frontend ficam em TypeScript. O Kotlin está res
 
 A autenticação implementa cadastro com nome e sobrenome, login por e-mail e senha, restauração e renovação de sessão, logout no dispositivo atual e proteção das telas privadas. Quando o Supabase exige confirmação de e-mail, o cadastro apresenta a orientação correspondente e aguarda uma sessão válida.
 
-A interface inclui início, áreas de cultivo, estações, clima, alertas, perfil, parâmetros de culturas e histórico. **Os dados agrícolas são de demonstração**, identificados na interface; ainda não são leituras de sensores nem registros persistidos no Supabase. Os formulários agrícolas e controles do protótipo não representam uma integração completa com o banco.
+Na página inicial, **Telemetria** mostra as coletas reais das estações autorizadas e **Áreas e culturas** cadastra áreas e parâmetros no banco, vincula estações e consulta previsão por coordenadas. As demais telas com dados de exemplo são identificadas como demonstração.
 
 Recuperação de senha, login social, integração com sensores e persistência dos dados agrícolas ainda não estão implementados.
 
@@ -108,7 +108,7 @@ VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_sua_chave_publica
 
 O arquivo `.env.local` e o `local.properties` não são enviados ao Git. As variáveis `VITE_` são incorporadas ao frontend compilado e são públicas: use somente a chave **publishable**, nunca `service_role`, `sb_secret_`, senha do banco ou credenciais administrativas.
 
-Depois de alterar a configuração, reinicie o servidor de desenvolvimento ou recompile o APK. A exigência de confirmação de e-mail depende da configuração do seu projeto Supabase; o aplicativo trata os dois casos.
+Defina também `VITE_AGROSENSE_API_URL` para a origem HTTPS da API da previsão. Depois de alterar a configuração, reinicie o servidor de desenvolvimento ou recompile o APK. A exigência de confirmação de e-mail depende da configuração do seu projeto Supabase; o aplicativo trata os dois casos.
 
 ## Executar no navegador
 

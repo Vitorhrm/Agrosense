@@ -5,7 +5,7 @@ import type { Screen } from "../../types/navigation"
 import { areas } from "../../data/demo"
 import "./WeatherScreen.css"
 
-export function WeatherScreen({ go }: { go: (screen: Screen) => void }) {
+export function WeatherScreen({ go, onOpenForecast }: { go: (screen: Screen) => void; onOpenForecast: (name: string) => void }) {
   return (
     <AppShell screen="weather" go={go}>
       <TopBar title="Clima" subtitle="Previsão individual por área" />
@@ -27,7 +27,7 @@ export function WeatherScreen({ go }: { go: (screen: Screen) => void }) {
             <button
               className={`climate-card climate-${index}`}
               key={area.name}
-              onClick={() => go("weather-detail")}
+              onClick={() => onOpenForecast(area.name)}
             >
               <div className="climate-head">
                 <div>

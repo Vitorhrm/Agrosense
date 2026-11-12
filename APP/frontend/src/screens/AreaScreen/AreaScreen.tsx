@@ -11,6 +11,9 @@ import { areas, stations } from "../../data/demo"
 import "./AreaScreen.css"
 
 export function AreaScreen({ go, area }: { area: typeof areas[number], go: (screen: Screen) => void }) {
+  const hasDetails = area.name === "Talhão Norte"
+  const needsAttention = area.offline > 0 || area.tone === "danger"
+
   return (
     <AppShell screen="area" go={go}>
       <TopBar
@@ -33,10 +36,10 @@ export function AreaScreen({ go, area }: { area: typeof areas[number], go: (scre
             </span>
             <div>
               <span>STATUS DA ÁREA</span>
-              <strong>Atenção necessária</strong>
+              <strong>{needsAttention ? "Atenção necessária" : "Sem alertas"}</strong>
             </div>
           </div>
-          <Badge tone="danger">1 offline</Badge>
+          <Badge tone={area.offline > 0 ? "danger" : "success"}>{area.offline > 0 ? `${area.offline} offline` : `${area.online} online`}</Badge>
         </div>
         <div className="section-title">
           <div>
@@ -45,18 +48,23 @@ export function AreaScreen({ go, area }: { area: typeof areas[number], go: (scre
           </div>
         </div>
         <div className="metrics-grid">
-          <Metric icon={Droplets} label="Umidade do solo" value="34%" />
+          <Metric icon={Droplets} label="Umidade do solo" value={`${area.moisture}%`} />
           <Metric
             icon={Thermometer}
             label="Temperatura"
-            value="27°C"
+            value={`${area.temperature} °C`}
             tone="orange"
           />
-          <Metric icon={Wind} label="Umidade do ar" value="66%" tone="blue" />
-          <Metric icon={Gauge} label="Pressão" value="1012 hPa" tone="purple" />
+          {hasDetails && (
+            <>
+              <Metric icon={Wind} label="Umidade do ar" value="66%" tone="blue" />
+              <Metric icon={Gauge} label="Pressão" value="1012 hPa" tone="purple" />
+            </>
+          )}
         </div>
-        <RecommendationCard />
-        <article className="weather-card" onClick={() => go("weather-detail")}>
+        <RecommendationCard area={area} />
+        <article className="weather-card">
+          <button type="button" className="weather-card-open" aria-label={`Abrir previsão de ${area.name}`} onClick={() => go("weather-detail")} />
           <div className="weather-card-head">
             <div>
               <span>CLIMA DESTA ÁREA</span>
@@ -65,30 +73,31 @@ export function AreaScreen({ go, area }: { area: typeof areas[number], go: (scre
             <CloudRain size={31} />
           </div>
           <div className="weather-main">
-            <strong>27°</strong>
+            <strong>{area.temperature}°</strong>
             <div>
-              <b>Chuva às 21:00</b>
-              <span>82% de chance · 11,4 mm</span>
+              <b>Próxima chuva · {area.nextRain}</b>
+              <span>{area.rain}% de chance · {area.precipitation}</span>
             </div>
           </div>
           <div className="location-note">
             <MapPin size={14} /> Previsão baseada na localização das estações
           </div>
-          <HourlyForecast />
+          {hasDetails && <HourlyForecast />}
         </article>
         <div className="section-title">
           <div>
             <span>ESTAÇÕES</span>
-            <p>2 online · 1 offline</p>
+            <p>{area.online} online · {area.offline} offline</p>
           </div>
           <button onClick={() => go("new-station")}>Adicionar</button>
         </div>
         <div className="station-list">
-          {stations.map((station) => (
+          {hasDetails && stations.map((station) => (
             <button
               className={`station-card ${station.status.toLowerCase()}`}
               key={station.name}
-              onClick={() => station.status === "OFFLINE" && go("station")}
+              disabled={station.status !== "OFFLINE"}
+              onClick={() => go("station")}
             >
               <span className="station-status-icon">
                 {station.status === "ONLINE" ? (
@@ -119,7 +128,7 @@ export function AreaScreen({ go, area }: { area: typeof areas[number], go: (scre
         </div>
         <button className="text-action" onClick={() => go("crop")}>
           <Leaf size={18} />
-          <span>Parâmetros da cultura: {area.crop}</span>
+          <span>Áreas e culturas</span>
           <ChevronRight size={18} />
         </button>
       </section>

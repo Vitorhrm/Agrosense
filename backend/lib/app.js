@@ -1,8 +1,9 @@
 import {randomUUID} from 'node:crypto';
 import {AppError, validateNode, validateReading, summarizeReadings} from './domain.js';
-import {equalSecret, sessionToken, requireDashboard, requireIngest, requireSameOrigin} from './auth.js';
+import {dashboardConfigured, equalSecret, sessionToken, requireDashboard, requireIngest, requireSameOrigin} from './auth.js';
 import {createStore} from './store.js';
 import {generateSummary} from './ai.js';
+import {createForecast} from './forecast.js';
 
 const json = (body, status = 200, headers = {}) => Response.json(body, {status, headers: {'Cache-Control': 'no-store', ...headers}});
 async function body(request) {
@@ -23,14 +24,22 @@ async function body(request) {
   catch { throw new AppError(400, 'JSON inválido.'); }
 }
 
-export function createApp({env = process.env, storeFactory = createStore, ai = generateSummary} = {}) {
+export function createApp({env = process.env, storeFactory = createStore, ai = generateSummary, forecastFetch} = {}) {
+  const forecast = createForecast(forecastFetch);
   return async function handle(request) {
     const url = new URL(request.url), route = url.pathname;
+    const isForecast = route === '/api/forecast' && request.method === 'GET';
+    const cors = isForecast ? {'Access-Control-Allow-Origin': '*'} : {};
     try {
       if (route === '/api/health' && request.method === 'GET') return json({ok: true});
+      if (isForecast) {
+        const {payload, expiresAt} = await forecast(url.searchParams);
+        const maxAge = Math.max(0, Math.floor((expiresAt - Date.now()) / 1000));
+        return json(payload, 200, {...cors, 'Cache-Control': `public, max-age=${maxAge}, s-maxage=${maxAge}`});
+      }
       if (route === '/api/login' && request.method === 'POST') {
         requireSameOrigin(request);
-        if (!env.DASHBOARD_PASSWORD || !env.SESSION_SECRET) throw new AppError(503, 'Acesso ao painel ainda não configurado.');
+        if (!dashboardConfigured(env)) throw new AppError(503, 'Acesso ao painel ainda não configurado.');
         const input = await body(request);
         if (!equalSecret(input.password, env.DASHBOARD_PASSWORD)) throw new AppError(401, 'Senha incorreta.');
         const secure = url.protocol === 'https:' ? '; Secure' : '';
@@ -73,7 +82,7 @@ export function createApp({env = process.env, storeFactory = createStore, ai = g
       return json({error: 'Rota não encontrada.'}, 404);
     } catch (error) {
       if (!(error instanceof AppError)) console.error('api_request_failed', {name: error.name});
-      return json({error: error instanceof AppError ? error.message : 'Não foi possível concluir a operação.'}, error.status || 500);
+      return json({error: error instanceof AppError ? error.message : 'Não foi possível concluir a operação.'}, error.status || 500, cors);
     }
   };
 }

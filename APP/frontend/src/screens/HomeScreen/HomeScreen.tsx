@@ -1,4 +1,4 @@
-import { AlertCircle, Check, ChevronRight, Droplets, Plus } from "lucide-react"
+import { AlertCircle, Check, ChevronRight, Droplets, Leaf, Plus, RadioTower } from "lucide-react"
 import { Button } from "../../components/Button/Button"
 import { TopBar } from "../../components/TopBar/TopBar"
 import { AppShell } from "../../components/AppShell/AppShell"
@@ -13,6 +13,12 @@ export function HomeScreen({ go, user, onOpenArea }: { onOpenArea: (name: string
     <AppShell screen="home" go={go}>
       <TopBar title={`Olá, ${user?.firstName || 'Produtor'}`} subtitle="Hoje" />
       <section className="page">
+        <Button icon={RadioTower} full onClick={() => go("telemetry")}>
+          Telemetria das estações
+        </Button>
+        <Button variant="secondary" icon={Leaf} full onClick={() => go("crop")}>
+          Áreas e culturas
+        </Button>
         <button className="attention-banner" onClick={() => go("alerts")}>
           <span>
             <AlertCircle size={21} />
