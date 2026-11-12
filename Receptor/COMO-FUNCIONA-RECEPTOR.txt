@@ -220,4 +220,5 @@ exibido na serial USB a 115200. O app configura nome e Wi-Fi e permite
 cadastrar o gateway como geral ou associar seu registro a uma area.
 A senha Wi-Fi e gravada localmente. A URL e o token de ingestao permanecem
 em CloudConfig.local.h. O modem conserva canal, nivel e chave RF atuais.
-A busca de SSID e a senha LoRa ainda nao estao implementadas.
+Configure o SSID e a senha no receptor antes de iniciar a busca de redes
+LoRa no transmissor. Os modems precisam estar no mesmo canal e modo RF.

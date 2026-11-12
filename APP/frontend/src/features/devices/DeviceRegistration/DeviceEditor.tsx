@@ -1,25 +1,31 @@
 import { useEffect, useId, useState, type FormEvent } from "react"
-import { ChevronDown } from "lucide-react"
+import { ChevronDown, RadioTower } from "lucide-react"
 import { Button } from "../../../components/Button/Button"
-import { buildSaveCommand, type DeviceForm, type DeviceInfo } from "../provisioning.ble"
-import { loadDeviceCloudContext, type DeviceCloudContext, type SavedDevice } from "../provisioning.cloud"
+import { buildSaveCommand, type DeviceForm, type DeviceInfo, type LoraNetwork } from "../provisioning.ble"
+import { activateStation, loadDeviceCloudContext, type DeviceCloudContext, type SavedDevice } from "../provisioning.cloud"
 
 type Association = Pick<SavedDevice, "areaId" | "updateStationArea">
 
-export function DeviceEditor({ info, userId, saving, onSave, onBack }: {
+export function DeviceEditor({ info, userId, saving, scanningLora, loraNetworks, onScanLora, onSave, onBack }: {
   info: DeviceInfo
   userId: string
   saving: boolean
+  scanningLora: boolean
+  loraNetworks: LoraNetwork[] | null
+  onScanLora: () => void
   onSave: (json: string, association: Association) => void
   onBack: () => void
 }) {
   const passwordHelpId = useId()
+  const loraPasswordHelpId = useId()
+  const loraGroupId = useId()
   const [form, setForm] = useState<DeviceForm>({
     name: info.name,
     wifiSsid: info.wifi_ssid ?? "",
     wifiPassword: "",
     openWifi: false,
     loraSsid: info.lora_ssid ?? "",
+    loraReceiverId: info.lora_receiver_id ?? "",
     loraPassword: "",
   })
   const [cloud, setCloud] = useState<DeviceCloudContext | null>(null)
@@ -27,6 +33,8 @@ export function DeviceEditor({ info, userId, saving, onSave, onBack }: {
   const [cloudRequest, setCloudRequest] = useState(0)
   const [areaOverride, setAreaOverride] = useState<string>()
   const [error, setError] = useState("")
+  const [code, setCode] = useState("")
+  const [activating, setActivating] = useState(false)
   const receiver = info.role === "receiver"
   const areaId = areaOverride ?? cloud?.areaId
   const canAssignArea = cloud && (receiver || cloud.stationGranted)
@@ -44,9 +52,32 @@ export function DeviceEditor({ info, userId, saving, onSave, onBack }: {
     setForm(previous => ({ ...previous, [field]: value }))
   }
 
+  async function activate() {
+    if (!info.node || activating || saving || scanningLora) return
+    const normalized = code.trim().toLowerCase()
+    setError("")
+    if (!/^[a-f0-9]{32}$/.test(normalized)) {
+      setError("Informe o código de ativação com 32 caracteres.")
+      return
+    }
+    setActivating(true)
+    try {
+      if (!await activateStation(info.node, normalized)) {
+        setError("Código inválido, expirado ou já utilizado nesta estação.")
+        return
+      }
+      setCode("")
+      setCloud(previous => previous ? { ...previous, stationGranted: true } : previous)
+    } catch {
+      setError("Não foi possível ativar a estação. Verifique a conexão e tente novamente.")
+    } finally {
+      setActivating(false)
+    }
+  }
+
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (saving) return
+    if (saving || activating || scanningLora) return
     setError("")
     try {
       const command = buildSaveCommand(form, info)
@@ -64,7 +95,7 @@ export function DeviceEditor({ info, userId, saving, onSave, onBack }: {
       <h3>Configuração do ESP32</h3>
       <p>Dispositivo {info.device_id}{info.node && ` · Estação ${info.node}`}</p>
       {error && <p className="inline-alert" role="alert">{error}</p>}
-      <fieldset disabled={saving}>
+      <fieldset disabled={saving || activating || scanningLora}>
         <label className="field">
           <span>Nome do dispositivo</span>
           <div><input value={form.name} onChange={event => setField("name", event.target.value)} required maxLength={32} /></div>
@@ -90,16 +121,49 @@ export function DeviceEditor({ info, userId, saving, onSave, onBack }: {
         )}
         {info.lora_supported ? (
           <>
-            <label className="field">
-              <span>Identificador LoRa</span>
-              <div><input value={form.loraSsid} onChange={event => setField("loraSsid", event.target.value)} /></div>
-            </label>
-            <label className="field">
-              <span>Senha LoRa</span>
-              <div><input type="password" autoComplete="new-password" value={form.loraPassword} onChange={event => setField("loraPassword", event.target.value)} /></div>
-            </label>
+            <div className="device-lora-section">
+              <h4>Rede LoRa</h4>
+              {receiver ? (
+                <label className="field">
+                  <span>Nome da rede LoRa (SSID)</span>
+                  <div><input value={form.loraSsid} maxLength={32} onChange={event => setField("loraSsid", event.target.value)} /></div>
+                </label>
+              ) : (
+                <>
+                  {form.loraSsid && form.loraReceiverId && (
+                    <p className="device-lora-note">Rede selecionada: <strong>{form.loraSsid}</strong> · {form.loraReceiverId}</p>
+                  )}
+                  <Button variant="secondary" icon={RadioTower} full onClick={() => { setError(""); onScanLora() }}>
+                    Buscar receptores LoRa
+                  </Button>
+                  {scanningLora && <p className="device-progress" role="status">Buscando receptores pelo rádio do transmissor…</p>}
+                  {loraNetworks?.length === 0 && <p className="device-progress" role="status">Nenhum receptor respondeu à busca.</p>}
+                  {Boolean(loraNetworks?.length) && (
+                    <fieldset className="device-lora-networks">
+                      <legend>Receptores encontrados</legend>
+                      {loraNetworks?.map(network => (
+                        <label key={network.receiver_id + ":" + network.ssid}>
+                          <input type="radio" name={loraGroupId}
+                            checked={form.loraReceiverId === network.receiver_id && form.loraSsid === network.ssid}
+                            onChange={() => setForm(previous => ({
+                              ...previous, loraSsid: network.ssid, loraReceiverId: network.receiver_id, loraPassword: "",
+                            }))}
+                          />
+                          <span><strong>{network.ssid}</strong><small>{network.receiver_id} · {network.rssi} dBm</small></span>
+                        </label>
+                      ))}
+                    </fieldset>
+                  )}
+                </>
+              )}
+              <label className="field">
+                <span>Senha LoRa</span>
+                <div><input type="password" autoComplete="new-password" aria-describedby={loraPasswordHelpId} value={form.loraPassword} maxLength={64} onChange={event => setField("loraPassword", event.target.value)} /></div>
+              </label>
+              <p className="device-password-help" id={loraPasswordHelpId}>Para manter a rede e a senha atuais, deixe em branco. Ao mudar a rede, informe a senha.</p>
+            </div>
           </>
-        ) : <p className="device-lora-note">A busca e configuração LoRa pelo aplicativo ainda dependem do suporte do rádio DX-LR32.</p>}
+        ) : <p className="device-lora-note">A busca e configuração LoRa estão indisponíveis neste dispositivo. Verifique o rádio e o firmware.</p>}
         {canAssignArea && (
           <label className="field">
             <span>Área</span>
@@ -112,7 +176,15 @@ export function DeviceEditor({ info, userId, saving, onSave, onBack }: {
             </div>
           </label>
         )}
-        {cloud && !receiver && !cloud.stationGranted && <p className="device-lora-note">O vínculo com uma área fica disponível quando esta estação for liberada para sua conta.</p>}
+        {cloud && !receiver && !cloud.stationGranted && info.node && (
+          <div className="device-cloud-retry">
+            <label className="field">
+              <span>Código de ativação da estação</span>
+              <div><input type="password" autoComplete="off" maxLength={32} value={code} onChange={event => setCode(event.target.value)} /></div>
+            </label>
+            <button type="button" onClick={() => void activate()}>{activating ? "Ativando…" : "Ativar estação"}</button>
+          </div>
+        )}
         {!cloud && !cloudError && <p className="device-lora-note" role="status">Buscando áreas da conta…</p>}
         {cloudError && (
           <div className="device-cloud-retry">
@@ -121,7 +193,7 @@ export function DeviceEditor({ info, userId, saving, onSave, onBack }: {
           </div>
         )}
       </fieldset>
-      <Button type="submit" full disabled={saving}>{saving ? "Aguardando o ESP32…" : "Salvar no dispositivo"}</Button>
+      <Button type="submit" full disabled={saving || activating || scanningLora}>{saving ? "Aguardando o ESP32…" : "Salvar no dispositivo"}</Button>
       {!saving && <button className="device-back" type="button" onClick={onBack}>Voltar à busca Bluetooth</button>}
     </form>
   )

@@ -34,24 +34,27 @@ class CloudUploader {
     Serial.println("Nuvem: envio HTTPS habilitado. Aguardando Wi-Fi e sincronizacao de hora.");
   }
 
-  // Copia somente os campos do protocolo e gera um UUID mantido em todas as retentativas.
-  void enqueue(const JsonDocument& reading) {
+  // Preserva o UUID autenticado do radio ou gera um para a coleta legada.
+  void enqueue(const JsonDocument& reading, const char* authenticatedEventId) {
     if (!queue_) return;
     JsonDocument payload; // Copia independente do buffer que sera reutilizado pelo radio.
     for (const char* field : {"v", "node", "seq", "uptime_ms", "temp_c", "air_rh_pct",
                               "pressure_hpa", "soil_raw", "soil_enabled", "signal"}) {
       payload[field] = reading[field];
     }
-    uint8_t uuid[16]; // Identificador aleatorio UUID v4 para evitar duplicatas de retentativas.
-    esp_fill_random(uuid, sizeof(uuid));
-    uuid[6] = (uuid[6] & 0x0f) | 0x40;
-    uuid[8] = (uuid[8] & 0x3f) | 0x80;
-    char eventId[37]; // UUID em formato aceito pela API.
-    snprintf(eventId, sizeof(eventId),
-      "%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x",
-      uuid[0], uuid[1], uuid[2], uuid[3], uuid[4], uuid[5], uuid[6], uuid[7],
-      uuid[8], uuid[9], uuid[10], uuid[11], uuid[12], uuid[13], uuid[14], uuid[15]);
-    payload["event_id"] = eventId;
+    if (!reading["soil_index_pct"].isNull()) payload["soil_index_pct"] = reading["soil_index_pct"];
+    char eventId[37];
+    if (!authenticatedEventId) {
+      uint8_t uuid[16];
+      esp_fill_random(uuid, sizeof(uuid));
+      uuid[6] = (uuid[6] & 0x0f) | 0x40;
+      uuid[8] = (uuid[8] & 0x3f) | 0x80;
+      snprintf(eventId, sizeof(eventId),
+        "%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x",
+        uuid[0], uuid[1], uuid[2], uuid[3], uuid[4], uuid[5], uuid[6], uuid[7],
+        uuid[8], uuid[9], uuid[10], uuid[11], uuid[12], uuid[13], uuid[14], uuid[15]);
+    }
+    payload["event_id"] = authenticatedEventId ? authenticatedEventId : eventId;
     PendingReading pending{}; // Registro completo que sera copiado para a fila.
     if (payload.overflowed() || measureJson(payload) >= sizeof(pending.json)) {
       Serial.println("Nuvem: coleta excede o buffer de envio."); return;

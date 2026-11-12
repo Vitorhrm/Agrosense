@@ -59,6 +59,16 @@
 .device-editor .field > div:focus-within { outline: 2px solid var(--forest-700); outline-offset: 2px; }
 
 .device-wifi-status, .device-lora-note, .device-cloud-retry { margin-bottom: 12px; }
+.device-lora-section { margin: 16px 0; }
+.device-lora-section h4 { margin-bottom: 8px; font-size: 14px; }
+.device-lora-section > .button { margin-bottom: 12px; }
+.device-editor .device-lora-networks { margin: 0 0 14px; }
+.device-lora-networks legend { font-size: 12px; font-weight: 700; margin-bottom: 8px; }
+.device-lora-networks label { display: flex; align-items: center; gap: 8px; padding: 8px; border: 1px solid var(--line); border-radius: 10px; margin-bottom: 6px; cursor: pointer; }
+.device-lora-networks input { accent-color: var(--forest-700); }
+.device-lora-networks strong, .device-lora-networks small { display: block; font-size: 12px; overflow-wrap: anywhere; }
+.device-lora-networks small { color: var(--muted); }
+
 .device-editor .device-password-help { margin: -8px 0 12px; font-size: 11px; }
 .device-checkbox { display: flex; align-items: center; gap: 8px; margin: 0 0 14px; font-size: 12px; }
 .device-checkbox input { accent-color: var(--forest-700); }

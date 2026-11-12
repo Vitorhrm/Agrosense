@@ -1,21 +1,34 @@
 import { useEffect, useRef, useState } from "react"
-import { readDeviceInfo, type BleBridge, type BleDevice, type BleEvent, type DeviceInfo, type DeviceRole } from "./provisioning.ble"
+import { readDeviceInfo, readLoraNetworks, type LoraNetwork, type BleBridge, type BleDevice, type BleEvent, type DeviceInfo, type DeviceRole } from "./provisioning.ble"
 import { saveDeviceMetadata, type SavedDevice } from "./provisioning.cloud"
 
-type Step = "choose" | "scan" | "scanning" | "connect" | "read" | "edit" | "save" | "cloud" | "partial" | "done"
+type Step = "choose" | "scan" | "scanning" | "connect" | "read" | "edit" | "lora-scan" | "save" | "cloud" | "partial" | "done"
 
 type ProvisioningState = {
   step: Step
   role?: DeviceRole
   devices: BleDevice[]
   searched: boolean
+  loraNetworks: LoraNetwork[] | null
   info?: DeviceInfo
   saved?: SavedDevice
   error?: string
 }
 
-const initialState: ProvisioningState = { step: "choose", devices: [], searched: false }
-const waitMs: Partial<Record<Step, number>> = { scanning: 15000, connect: 25000, read: 12000, save: 35000 }
+const initialState: ProvisioningState = { step: "choose", devices: [], searched: false, loraNetworks: null }
+const waitMs: Partial<Record<Step, number>> = { scanning: 15000, connect: 25000, read: 12000, "lora-scan": 12000, save: 35000 }
+
+const loraErrors = new Map([
+  ["lora_unavailable", "Rádio LoRa indisponível. Confira a conexão do módulo e tente novamente."],
+  ["lora_busy", "O rádio LoRa está ocupado. Aguarde e tente novamente."],
+  ["lora_pair_timeout", "O receptor não confirmou o pareamento. Confira se está ligado, se a rede selecionada é a correta e se a senha corresponde à do receptor."],
+  ["lora_send_failed", "O rádio não conseguiu enviar a solicitação LoRa. Tente novamente."],
+  ["invalid_lora_password", "O dispositivo recusou a senha LoRa. Use de 16 a 64 bytes, sem caracteres de controle."],
+  ["lora_password_required", "Informe a senha LoRa para trocar de rede ou receptor."],
+  ["invalid_lora_ssid", "O dispositivo recusou o SSID LoRa. Use de 1 a 32 bytes, sem caracteres de controle."],
+  ["lora_ssid_required", "Informe o nome da rede LoRa."],
+  ["invalid_lora_receiver_id", "O identificador do receptor é inválido. Busque e selecione o receptor novamente."],
+])
 
 export function useDeviceProvisioning(bridge: BleBridge | undefined, userId: string) {
   const [state, setState] = useState(initialState)
@@ -42,7 +55,7 @@ export function useDeviceProvisioning(bridge: BleBridge | undefined, userId: str
   }
 
   function recover(message: string) {
-    update({ step: "scan", info: undefined, error: message })
+    update({ step: "scan", info: undefined, loraNetworks: null, error: message })
     pendingArea.current = null
     bridge?.disconnect()
   }
@@ -57,6 +70,13 @@ export function useDeviceProvisioning(bridge: BleBridge | undefined, userId: str
     if (!bridge || !["scan", "scanning"].includes(current.current.step)) return
     update({ step: "connect", error: undefined })
     bridge.connect(device.id)
+  }
+
+  function scanLora() {
+    const { info, step } = current.current
+    if (!bridge || step !== "edit" || info?.role !== "transmitter" || !info.lora_supported) return
+    update({ step: "lora-scan", loraNetworks: null, error: undefined })
+    bridge.send(JSON.stringify({ op: "scan_lora" }))
   }
 
   function save(json: string, association: Pick<SavedDevice, "areaId" | "updateStationArea">) {
@@ -102,6 +122,10 @@ export function useDeviceProvisioning(bridge: BleBridge | undefined, userId: str
       } else if (detail.type === "connected" && step === "connect") {
         update({ step: "read" })
         bridge?.send(JSON.stringify({ op: "info" }))
+      } else if (detail.type === "message" && step === "lora-scan" && detail.payload && (!detail.payload.op || detail.payload.op === "scan_lora")) {
+        const networks = detail.payload.ok ? readLoraNetworks(detail.payload.networks) : null
+        if (networks) update({ step: "edit", loraNetworks: networks })
+        else update({ step: "edit", error: loraErrors.get(detail.payload.error ?? "") ?? "O transmissor não conseguiu concluir a busca LoRa. Tente novamente." })
       } else if (detail.type === "message" && role && (step === "read" || step === "save")) {
         const response = detail.payload
         if (!response || (response.op && response.op !== (step === "read" ? "info" : "save"))) return
@@ -109,7 +133,7 @@ export function useDeviceProvisioning(bridge: BleBridge | undefined, userId: str
           if (step === "read") recover("O dispositivo não respondeu com uma configuração válida.")
           else {
             pendingArea.current = null
-            update({ step: "edit", error: "O dispositivo recusou a configuração. Confira os dados e tente novamente." })
+            update({ step: "edit", error: loraErrors.get(response.error ?? "") ?? "O dispositivo recusou a configuração. Confira os dados e tente novamente." })
           }
           return
         }
@@ -125,9 +149,9 @@ export function useDeviceProvisioning(bridge: BleBridge | undefined, userId: str
           void saveCloud(saved)
           bridge?.disconnect()
         }
-      } else if (detail.type === "error" && ["scanning", "connect", "read", "edit", "save"].includes(step)) {
+      } else if (detail.type === "error" && ["scanning", "connect", "read", "edit", "lora-scan", "save"].includes(step)) {
         recover(detail.message)
-      } else if (detail.type === "disconnected" && ["connect", "read", "edit", "save"].includes(step)) {
+      } else if (detail.type === "disconnected" && ["connect", "read", "edit", "lora-scan", "save"].includes(step)) {
         recover(step === "save"
           ? "O Bluetooth caiu antes da confirmação. Reconecte para conferir a configuração gravada."
           : "O dispositivo desconectou. Faça a busca e conecte novamente.")
@@ -143,6 +167,10 @@ export function useDeviceProvisioning(bridge: BleBridge | undefined, userId: str
     if (!delay) return
     const timeout = window.setTimeout(() => {
       if (current.current.step !== state.step) return
+      if (state.step === "lora-scan") {
+        update({ step: "edit", error: "O transmissor não retornou a busca LoRa a tempo. Tente novamente." })
+        return
+      }
       recover(state.step === "save"
         ? "O ESP32 não confirmou a gravação a tempo. Reconecte para conferir a configuração."
         : "O Bluetooth não respondeu a tempo. Tente buscar e conectar novamente.")
@@ -151,7 +179,7 @@ export function useDeviceProvisioning(bridge: BleBridge | undefined, userId: str
   }, [state.step, bridge])
 
   return {
-    state, scan, connect, save,
+    state, scan, scanLora, connect, save,
     choose: (role: DeviceRole) => reset(role),
     reset,
     retryCloud: () => {

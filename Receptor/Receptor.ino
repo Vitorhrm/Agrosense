@@ -15,7 +15,7 @@ RadioLink radio(loraSerial); // Transporte que separa JSON do byte binario de RS
 bool radioReady = false; // Evita interpretar bytes sem configuracao RSSI confirmada.
 ReceiverWifi receiverWifi; // Gerencia a conexao ao roteador sem esperar no loop LoRa.
 CloudUploader cloudUploader; // Envia coletas validadas em uma tarefa separada.
-BleProvisioning provisioning;
+BleProvisioning provisioning(radio);
 
 // Aplica exatamente os limites pedidos, sem media, SNR ou percentual de entrega.
 const char* classifySignal(int rssiDbm) {
@@ -36,7 +36,7 @@ bool validReading(JsonVariantConst reading, float minimum, float maximum) {
 }
 
 // Associa o RSSI deste pacote a station identificada nele e imprime apenas o nome do sinal.
-void handleCollection(JsonDocument& message, int rssiDbm) {
+void handleCollection(JsonDocument& message, int rssiDbm, const char* eventId) {
   const JsonString node = message["node"].as<JsonString>();
   const JsonVariantConst soilIndex = message["soil_index_pct"];
   if (message["v"] != 1 || !isValidStationId(node.c_str(), node.size()) ||
@@ -56,7 +56,7 @@ void handleCollection(JsonDocument& message, int rssiDbm) {
   if (message.overflowed()) { Serial.println("ERRO: memoria insuficiente para o JSON."); return; }
   serializeJson(message, Serial); // Exemplo: {"node":"station1",...,"signal":"Bom"}
   Serial.println();
-  cloudUploader.enqueue(message); // Copia o JSON com a classificacao desta station para envio HTTPS.
+  cloudUploader.enqueue(message, eventId); // Copia o JSON e o identificador para envio HTTPS.
 }
 
 // Habilita RSSI anexado no receptor e verifica a resposta AT antes de receber coletas.
@@ -75,7 +75,7 @@ void setup() {
     Serial.println("Bytes recebidos serao exibidos abaixo em texto/hex. Nenhum RSSI sera inventado.");
   }
   provisioning.setWifiConnected(receiverWifi.isConnected());
-  provisioning.begin("AgroSense-RX", true, "");
+  provisioning.begin("AgroSense-RX", true, "", radioReady);
 }
 
 // Ponte de diagnostico: permite testar o modem pelo Monitor Serial quando a configuracao falha.
@@ -102,6 +102,18 @@ void loop() {
   if (!radioReady) { diagnoseModem(); delay(1); return; }
   JsonDocument message; // Coleta recebida da station.
   int receivedRssi = 0; // Valor interno em dBm, nao incluido no JSON de saida.
-  while (radio.receive(message, receivedRssi)) handleCollection(message, receivedRssi);
+  while (radio.receive(message, receivedRssi)) {
+    if (provisioning.handleRadio(message, receivedRssi)) continue;
+    const auto& network = provisioning.loraNetwork();
+    if (!network.enabled()) {
+      handleCollection(message, receivedRssi, nullptr);
+    } else {
+      JsonDocument reading;
+      char eventId[37]{};
+      if (LoraAuth::decodeReading(message, network, reading, eventId)) {
+        handleCollection(reading, receivedRssi, eventId);
+      }
+    }
+  }
   delay(1);
 }

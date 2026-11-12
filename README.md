@@ -347,20 +347,17 @@ Cada JSON associa o sinal ao seu `node`; o RSSI de uma estação não é reutili
 
 ## Descoberta e pareamento LoRa
 
-Hoje, o transmissor e o receptor usam o modo transparente dos rádios DX-LR32, com parâmetros de rádio compatíveis configurados previamente. O campo `node` identifica cada estação nas coletas.
+Configure primeiro o receptor pelo Bluetooth do app Android. Escolha o SSID e a senha da rede LoRa e salve. Em seguida, conecte ao transmissor pelo Bluetooth, busque as redes LoRa, escolha o SSID anunciado pelo receptor e digite a senha. O transmissor só confirma o vínculo depois de validar a resposta do receptor. Com a rede configurada, o receptor aceita coletas autenticadas pela senha compartilhada. Um identificador estável permite ao backend descartar retransmissões da mesma coleta.
 
-Para uma versão futura, a proposta é configurar no receptor um nome de rede, como `AgroSense-TCC`, e uma senha de pareamento. O celular acessaria o transmissor por Bluetooth para iniciar a busca. O transmissor consultaria os receptores em um canal LoRa de descoberta e apresentaria os nomes disponíveis no aplicativo. Após selecionar a rede, o usuário informaria a senha para o transmissor comprovar o acesso por desafio e resposta e salvar o destino confirmado.
+O nome da rede é do AgroSense. A busca ocorre no canal LoRa configurado nos modems DX-LR32, que precisam usar os mesmos parâmetros RF. O PIN Bluetooth, a senha do Wi-Fi, a senha LoRa e o código de ativação da estação têm funções distintas.
 
-Essa busca e o pareamento estão em fase de proposta. O cadastro Bluetooth em `APP` é uma prévia de interface.
+Para autorizar a telemetria pela primeira vez, informe no cadastro do transmissor o código de ativação de uso único da estação. Depois disso, selecione a área na mesma tela. Consulte o [passo a passo Android](APP/README.md).
 
 ## Backend e Supabase
 
-O [backend e painel Lab](backend/README.md) recebem coletas por HTTPS, armazenam no projeto Supabase AgroSense e mostram gráficos por estação. A IA NVIDIA gera resumos das últimas 120 coletas mediante solicitação, com intervalo mínimo de um minuto.
+O [backend](backend/README.md) recebe as coletas por HTTPS e grava no Supabase. A [versão web](https://agrosense-app.vercel.app/agro/) usa as mesmas contas, áreas e telemetria do app Android. O [painel Lab](https://agrosense-app.vercel.app/lab) tem login separado para diagnóstico.
 
-**Acessar:** https://agrosense-lab-vitor-f35a.vercel.app
-
-Configure `Receptor/WifiConfig.local.h` e `Receptor/CloudConfig.local.h` conforme o guia do backend. Esses arquivos são privados e ignorados pelo Git. O painel usa senha única nesta fase. A integração com usuários, áreas e telas do aplicativo original ainda é futura.
-
+Configure a URL e o token do receptor em `Receptor/CloudConfig.local.h`. O Wi-Fi pode ser configurado pelo app Android ou ter valores iniciais em `Receptor/WifiConfig.local.h`. Esses arquivos são privados e ignorados pelo Git.
 ## Testes e validação
 
 ### Aplicativo
@@ -440,7 +437,7 @@ O modem real responde às consultas AT com o valor consultado, sem `OK` adiciona
 - [ ] Vincular dispositivos e áreas a usuários com autorização adequada.
 - [ ] Substituir os dados demonstrativos do aplicativo por dados reais.
 - [x] Preparar o provisionamento BLE Android e o cadastro de dispositivos por conta.
-- [ ] Validar o BLE nos ESP32 e implementar descoberta e senha LoRa.
+- [ ] Validar em bancada o BLE, a descoberta por SSID e o pareamento LoRa.
 - [ ] Integrar dados meteorológicos reais e validar as regras de apoio à irrigação.
 - [ ] Adicionar integração contínua e testes de ponta a ponta conforme as integrações evoluírem.
 

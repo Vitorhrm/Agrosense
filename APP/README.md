@@ -38,10 +38,11 @@ Recuperação de senha, login social, integração com sensores e persistência 
 1. Entre na conta e abra **Configurar dispositivos**.
 2. Reinicie o ESP32. Ele anuncia `AgroSense-TX` ou `AgroSense-RX` por cinco minutos. Leia o PIN na serial USB a 115200 baud.
 3. Escolha o tipo, permita a busca Bluetooth e selecione o dispositivo. Digite o PIN no diálogo do Android.
-4. Defina o nome. Vincule o transmissor autorizado a uma área. O receptor pode ficar geral ou vinculado a uma área. Informe o SSID e a senha do Wi-Fi no receptor.
-5. Aguarde a confirmação do ESP32. Se o cadastro no banco falhar, repita apenas essa etapa pelo app. Reconecte para conferir o estado da rede. Para editar depois, reinicie o ESP32 e refaça a conexão.
+4. Comece pelo receptor. Defina o nome da rede LoRa (SSID) e a senha. O receptor pode ficar geral ou vinculado a uma área. Informe também o SSID e a senha do Wi-Fi.
+5. Conecte ao transmissor. Toque em **Buscar redes LoRa**, escolha a rede do receptor e digite a senha LoRa. Se for o primeiro cadastro, use o código de ativação da estação para liberar a telemetria na sua conta e escolha a área.
+6. Aguarde a confirmação do ESP32. Se o cadastro no banco falhar, repita apenas essa etapa pelo app. Reconecte para conferir o estado da rede. Para editar depois, reinicie o ESP32 e refaça a conexão.
 
-O Wi-Fi é configurado por BLE com pareamento autenticado e a senha fica no receptor. O Supabase recebe os metadados e o vínculo da área. A busca e a senha LoRa seguem pendentes. O rádio preserva os parâmetros do modem. O APK foi compilado, e o pareamento físico precisa ser verificado na bancada.
+O Wi-Fi é configurado por BLE com pareamento autenticado e a senha fica no receptor. O Supabase recebe os metadados e o vínculo da área. A descoberta e o pareamento LoRa ocorrem entre os ESP32 no canal já configurado. Os dois rádios precisam usar parâmetros RF compatíveis. Use uma senha LoRa forte de 16 a 64 bytes. Atualize os dois firmwares antes de habilitar a rede protegida. Depois de alterar o SSID ou a senha no receptor, refaça o pareamento do transmissor. Na bancada, verifique se o receptor aparece na busca, se uma senha incorreta é rejeitada, se a senha correta confirma o vínculo e se a telemetria continua após reiniciar os dois ESP32.
 
 No navegador, use o mesmo login, áreas, culturas, previsão e telemetria. O provisionamento usa o Bluetooth nativo do Android.
 

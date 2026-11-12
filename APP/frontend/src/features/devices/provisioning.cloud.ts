@@ -57,3 +57,12 @@ export async function saveDeviceMetadata(userId: string, saved: SavedDevice) {
   }, { onConflict: "user_id,device_id" })
   if (error) throw new Error("Não foi possível salvar o cadastro.")
 }
+
+export async function activateStation(node: string, code: string): Promise<boolean> {
+  const { data, error } = await getSupabase().rpc("agro_activate_station", {
+    p_node: node,
+    p_code: code,
+  })
+  if (error) throw error
+  return data === true
+}

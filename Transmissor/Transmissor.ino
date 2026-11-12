@@ -22,7 +22,8 @@ static_assert(isValidStationId(NODE_ID, sizeof(NODE_ID) - 1),
 HardwareSerial loraSerial(2); // UART2 dedicada ao modem.
 RadioLink radio(loraSerial); // Transporte UART e configuracao do modem.
 SensorReadings sensors; // Leitura dos sensores ambientais.
-BleProvisioning provisioning;
+BleProvisioning provisioning(radio);
+char bootId[17]{};
 bool radioReady = false; // Configuracao do modem confirmada.
 bool firstCollection = true; // Coleta imediatamente apos a inicializacao.
 uint32_t lastCollectionMs = 0; // Instante de inicio da ultima coleta.
@@ -45,7 +46,12 @@ void collectAndSend() {
       Serial.printf("Solo: indice relativo %.1f/100 (referencias locais).\n", soilIndex);
     }
   }
-  if (!radio.send(message)) {
+  const auto& network = provisioning.loraNetwork();
+  JsonDocument protectedMessage;
+  const bool sent = network.enabled()
+      ? LoraAuth::encodeReading(message, network, bootId, protectedMessage) && radio.send(protectedMessage)
+      : radio.send(message);
+  if (!sent) {
     Serial.println("ERRO: JSON excedeu o limite, faltou memoria ou houve falha na UART.");
     return;
   }
@@ -61,7 +67,7 @@ void setup() {
   provisioning.load("AgroSense-TX");
   if (SOIL_SENSOR_ENABLED && !SoilCalibration::valid(SOIL_DRY_REFERENCE, SOIL_WET_REFERENCE))
     Serial.println("Solo sem calibracao: preencha SoilCalibrationConfig.h; JSON continua com ADC bruto.");
-  radioReady = radio.begin(LORA_RX_PIN, LORA_TX_PIN, LORA_BAUD_RATE, false);
+  radioReady = radio.begin(LORA_RX_PIN, LORA_TX_PIN, LORA_BAUD_RATE, true);
   sensors.begin(I2C_SDA_PIN, I2C_SCL_PIN);
   if (SOIL_SENSOR_ENABLED) {
     analogReadResolution(12);
@@ -70,13 +76,21 @@ void setup() {
   }
   Serial.println(radioReady ? "Station pronta. Classificacao do sinal e feita no receptor."
       : "ERRO: modem sem configuracao confirmada. Confira ligacoes/baud e reinicie.");
-  provisioning.begin("AgroSense-TX", false, NODE_ID);
+  provisioning.begin("AgroSense-TX", false, NODE_ID, radioReady);
+  uint8_t random[8];
+  esp_fill_random(random, sizeof(random));
+  LoraAuth::encode(random, sizeof(random), bootId);
 }
 
 // Agenda coletas; minimo de 2 segundos evita leituras ambientais excessivas.
 void loop() {
+  if (radioReady) {
+    JsonDocument packet;
+    int rssi = 0;
+    while (radio.receive(packet, rssi)) provisioning.handleRadio(packet, rssi);
+  }
   provisioning.update();
-  if (!radioReady) { delay(10); return; }
+  if (!radioReady || provisioning.loraBusy()) { delay(1); return; }
   const uint32_t now = millis(); // Relogio desta iteracao; subtracao suporta overflow.
   const uint32_t interval = COLLECTION_INTERVAL_MS < 2000 ? 2000 : COLLECTION_INTERVAL_MS;
   if (firstCollection || static_cast<uint32_t>(now - lastCollectionMs) >= interval) {

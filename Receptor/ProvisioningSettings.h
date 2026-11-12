@@ -7,10 +7,22 @@ struct ProvisionedWifi {
   char password[65]{};
 };
 
-struct ProvisioningSettings {
+struct LegacyProvisioningSettings {
   char name[33]{};
   ProvisionedWifi wifi;
   bool wifiSaved = false;
+};
+
+struct ProvisionedLora {
+  char ssid[33]{};
+  char password[65]{};
+  char receiverId[13]{};
+
+  bool enabled() const { return ssid[0] != '\0'; }
+};
+
+struct ProvisioningSettings : LegacyProvisioningSettings {
+  ProvisionedLora lora;
 };
 
 constexpr bool validProvisioningText(const char* value, size_t length) {

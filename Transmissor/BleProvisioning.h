@@ -10,11 +10,13 @@
 #include <esp_random.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/queue.h>
+#include "LoraProvisioning.h"
 #include "ProvisioningSettings.h"
 
 // Mantenha as copias em Transmissor e Receptor iguais para abrir cada sketch separadamente.
 class BleProvisioning : private BLEServerCallbacks, private BLECharacteristicCallbacks {
  public:
+  explicit BleProvisioning(RadioLink& radio) : lora_(radio) {}
   // Chame antes de iniciar BLE. Uma configuracao BLE substitui o fallback compilado.
   void load(const char* defaultName, const char* wifiSsid = "", const char* wifiPassword = "") {
     strlcpy(settings_.name, defaultName, sizeof(settings_.name));
@@ -22,8 +24,7 @@ class BleProvisioning : private BLEServerCallbacks, private BLECharacteristicCal
     strlcpy(settings_.wifi.password, wifiPassword, sizeof(settings_.wifi.password));
     storageReady_ = preferences_.begin("agrosense", false);
     ProvisioningSettings stored{};
-    if (storageReady_ && preferences_.getBytesLength(SETTINGS_KEY) == sizeof(stored) &&
-        preferences_.getBytes(SETTINGS_KEY, &stored, sizeof(stored)) == sizeof(stored)) {
+    if (storageReady_ && readSettings(stored)) {
       memcpy(settings_.name, stored.name, sizeof(settings_.name));
       settings_.name[sizeof(settings_.name) - 1] = '\0';
       if (stored.wifiSaved) {
@@ -32,15 +33,22 @@ class BleProvisioning : private BLEServerCallbacks, private BLECharacteristicCal
         settings_.wifi.password[sizeof(settings_.wifi.password) - 1] = '\0';
         settings_.wifiSaved = stored.wifiSaved;
       }
+      settings_.lora = stored.lora;
     }
   }
 
   ProvisionedWifi initialWifi() const { return settings_.wifi; }
 
-  void begin(const char* advertisedName, bool receiver, const char* node) {
+  void begin(const char* advertisedName, bool receiver, const char* node, bool radioReady) {
     receiver_ = receiver;
     node_ = node;
+    radioReady_ = radioReady;
     if (receiver_) wifiQueue_ = xQueueCreate(1, sizeof(ProvisionedWifi));
+    commandQueue_ = xQueueCreate(2, sizeof(Command));
+    if (!commandQueue_) {
+      Serial.println("Configuracao Bluetooth indisponivel: sem memoria para a fila.");
+      return;
+    }
 
     const uint64_t mac = ESP.getEfuseMac();
     snprintf(deviceId_, sizeof(deviceId_), "%02x%02x%02x%02x%02x%02x",
@@ -90,13 +98,28 @@ class BleProvisioning : private BLEServerCallbacks, private BLECharacteristicCal
   }
 
   void update() {
+    serviceRadio();
     if (!advertising_) return;
     if (!withinWindow()) {
       if (!closed_.exchange(true)) advertising_->stop();
     } else if (advertiseAgain_.exchange(false)) {
       advertising_->start();
     }
+    Command command{};
+    if (xQueueReceive(commandQueue_, &command, 0) != pdTRUE || command.session != session_.load()) return;
+    responseSession_ = command.session;
+    if (command.error) sendError(command.error);
+    else if (!withinWindow()) sendError("window_closed");
+    else if (lora_.busy()) sendError("lora_busy");
+    else handleFrame(command);
   }
+
+  bool handleRadio(const JsonDocument& packet, int rssi) {
+    return lora_.handle(packet, rssi, receiver_, settings_.lora);
+  }
+
+  const ProvisionedLora& loraNetwork() const { return settings_.lora; }
+  bool loraBusy() const { return lora_.busy(); }
 
   bool takeWifiChange(ProvisionedWifi& wifi) {
     return wifiQueue_ && xQueueReceive(wifiQueue_, &wifi, 0) == pdTRUE;
@@ -108,21 +131,35 @@ class BleProvisioning : private BLEServerCallbacks, private BLECharacteristicCal
   static constexpr const char* SERVICE_UUID = "9ee936a0-982f-4dd6-9353-7152519a3c00";
   static constexpr const char* REQUEST_UUID = "9ee936a0-982f-4dd6-9353-7152519a3c01";
   static constexpr const char* RESPONSE_UUID = "9ee936a0-982f-4dd6-9353-7152519a3c02";
-  static constexpr const char* SETTINGS_KEY = "settings-v1";
+  static constexpr const char* SETTINGS_KEY = "settings-v2";
   static constexpr size_t CHUNK_BYTES = 20;
   static constexpr uint32_t WINDOW_MS = 5 * 60 * 1000;
   static constexpr uint32_t FRAME_TIMEOUT_MS = 5000;
 
+  struct Command {
+    uint32_t session = 0;
+    size_t size = 0;
+    const char* error = nullptr;
+    char json[512]{};
+  };
+
   Preferences preferences_;
   ProvisioningSettings settings_{};
+  ProvisioningSettings pendingSettings_{};
+  LoraProvisioning lora_;
   BLECharacteristic* response_ = nullptr;
   BLEAdvertising* advertising_ = nullptr;
   QueueHandle_t wifiQueue_ = nullptr;
+  QueueHandle_t commandQueue_ = nullptr;
+  std::atomic<uint32_t> session_{0};
+  uint32_t responseSession_ = 0;
+  uint32_t radioSession_ = 0;
   std::atomic<bool> advertiseAgain_{false};
   std::atomic<bool> wifiConnected_{false};
   std::atomic<bool> closed_{false};
   bool storageReady_ = false;
   bool receiver_ = false;
+  bool radioReady_ = false;
   const char* node_ = "";
   char deviceId_[13]{};
   uint32_t openedAt_ = 0;
@@ -130,6 +167,16 @@ class BleProvisioning : private BLEServerCallbacks, private BLECharacteristicCal
   char frame_[512]{};
   size_t frameSize_ = 0;
   bool discardFrame_ = false;
+
+  bool readSettings(ProvisioningSettings& stored) {
+    if (preferences_.getBytesLength(SETTINGS_KEY) == sizeof(stored) &&
+        preferences_.getBytes(SETTINGS_KEY, &stored, sizeof(stored)) == sizeof(stored)) return true;
+    LegacyProvisioningSettings legacy{};
+    if (preferences_.getBytesLength("settings-v1") != sizeof(legacy) ||
+        preferences_.getBytes("settings-v1", &legacy, sizeof(legacy)) != sizeof(legacy)) return false;
+    static_cast<LegacyProvisioningSettings&>(stored) = legacy;
+    return true;
+  }
 
   bool withinWindow() const {
     return !closed_.load() && static_cast<uint32_t>(millis() - openedAt_) < WINDOW_MS;
@@ -143,8 +190,19 @@ class BleProvisioning : private BLEServerCallbacks, private BLECharacteristicCal
 
   void onDisconnect(BLEServer*) override {
     clearFrame();
-    response_->setValue("");
+    session_.fetch_add(1);
     advertiseAgain_.store(true);
+  }
+
+  void enqueueCommand(const char* error = nullptr) {
+    Command command{};
+    command.session = session_.load();
+    command.error = error;
+    if (!error) {
+      command.size = frameSize_;
+      memcpy(command.json, frame_, frameSize_);
+    }
+    xQueueSend(commandQueue_, &command, 0);
   }
 
   void onWrite(BLECharacteristic* characteristic) override {
@@ -152,7 +210,7 @@ class BleProvisioning : private BLEServerCallbacks, private BLECharacteristicCal
     characteristic->setValue("");
     if (!withinWindow()) {
       clearFrame();
-      return sendError("window_closed");
+      return enqueueCommand("window_closed");
     }
     const uint32_t now = millis();
     if (static_cast<uint32_t>(now - lastChunkAt_) >= FRAME_TIMEOUT_MS) clearFrame();
@@ -160,15 +218,15 @@ class BleProvisioning : private BLEServerCallbacks, private BLECharacteristicCal
 
     if (chunk.length() > CHUNK_BYTES) {
       clearFrame();
-      return sendError("invalid_chunk");
+      return enqueueCommand("invalid_chunk");
     }
     for (size_t index = 0; index < chunk.length(); ++index) {
       const char byte = chunk[index];
       if (byte == '\n') {
         if (discardFrame_ || frameSize_ == 0 || index + 1 != chunk.length()) {
-          sendError("invalid_frame");
+          enqueueCommand("invalid_frame");
         } else {
-          handleFrame();
+          enqueueCommand();
         }
         clearFrame();
         return;
@@ -193,34 +251,103 @@ class BleProvisioning : private BLEServerCallbacks, private BLECharacteristicCal
     return field.isUnbound() || (text.c_str() && text.size() == 0);
   }
 
-  void handleFrame() {
+  void serviceRadio() {
+    if (lora_.busy() && (session_.load() != radioSession_ || !withinWindow())) {
+      lora_.cancel();
+      pendingSettings_ = {};
+    }
+    const auto result = lora_.update();
+    if (result == LoraProvisioning::Result::waiting) return;
+    responseSession_ = radioSession_;
+    if (result == LoraProvisioning::Result::scanned) {
+      JsonDocument reply;
+      reply["ok"] = true;
+      reply["op"] = "scan_lora";
+      lora_.addOffers(reply["networks"].to<JsonArray>());
+      return sendReply(reply);
+    }
+    if (result == LoraProvisioning::Result::paired) {
+      commitSettings(pendingSettings_);
+    } else {
+      sendError("lora_pair_timeout");
+    }
+    pendingSettings_ = {};
+  }
+
+  void handleFrame(const Command& frame) {
     JsonDocument command;
-    if (deserializeJson(command, static_cast<const char*>(frame_), frameSize_,
+    if (deserializeJson(command, frame.json, frame.size,
                         DeserializationOption::NestingLimit(2)) || !command.is<JsonObject>()) {
       return sendError("invalid_json");
     }
     const JsonVariantConst operation = command["op"];
     if (operation == "info") return sendInfo("info");
-    if (operation != "save") return sendError("invalid_op");
-    if (!emptyOrMissing(command["lora_ssid"]) || !emptyOrMissing(command["lora_password"])) {
-      return sendError("lora_unsupported");
+    if (operation == "scan_lora") {
+      if (receiver_) return sendError("lora_scan_transmitter_only");
+      if (!radioReady_) return sendError("lora_unavailable");
+      radioSession_ = responseSession_;
+      if (!lora_.scan()) sendError("lora_send_failed");
+      return;
     }
+    if (operation != "save") return sendError("invalid_op");
     ProvisioningSettings candidate = settings_;
     if (!copyField(command["name"], candidate.name)) return sendError("invalid_name");
     const char* error = applyWifiFields(command, candidate);
     if (error) return sendError(error);
+    const char* loraError = applyLoraFields(command, candidate);
+    if (loraError) return sendError(loraError);
+    if (!receiver_ && memcmp(&settings_.lora, &candidate.lora, sizeof(candidate.lora)) != 0) {
+      radioSession_ = responseSession_;
+      if (!lora_.pair(candidate.lora)) return sendError("lora_send_failed");
+      pendingSettings_ = candidate;
+      return;
+    }
+    commitSettings(candidate);
+  }
+
+  void commitSettings(const ProvisioningSettings& candidate) {
+    if (session_.load() != responseSession_ || !withinWindow()) return;
     ProvisioningSettings stored = candidate;
     if (!stored.wifiSaved) stored.wifi = {};
     if (!storageReady_ || preferences_.putBytes(SETTINGS_KEY, &stored, sizeof(stored)) != sizeof(stored)) {
       return sendError("storage_failed");
     }
     const bool wifiChanged = memcmp(&settings_.wifi, &candidate.wifi, sizeof(candidate.wifi)) != 0;
+    if (receiver_ && memcmp(&settings_.lora, &candidate.lora, sizeof(candidate.lora)) != 0) {
+      lora_.clearOutgoing();
+    }
     settings_ = candidate;
     if (wifiChanged) {
       wifiConnected_.store(false);
       xQueueOverwrite(wifiQueue_, &settings_.wifi);
     }
     sendInfo("save", wifiChanged);
+  }
+
+  const char* applyLoraFields(const JsonDocument& command, ProvisioningSettings& candidate) {
+    const JsonVariantConst ssid = command["lora_ssid"];
+    const JsonVariantConst password = command["lora_password"];
+    const JsonVariantConst receiverId = command["lora_receiver_id"];
+    if (ssid.isUnbound()) {
+      return password.isUnbound() && receiverId.isUnbound() ? nullptr : "lora_ssid_required";
+    }
+    if (!radioReady_) return "lora_unavailable";
+    if (!copyField(ssid, candidate.lora.ssid)) return "invalid_lora_ssid";
+    if (receiver_) {
+      strlcpy(candidate.lora.receiverId, deviceId_, sizeof(candidate.lora.receiverId));
+    } else if (!receiverId.isUnbound()) {
+      if (!LoraAuth::hex(receiverId.as<JsonString>(), 12) ||
+          !copyField(receiverId, candidate.lora.receiverId)) return "invalid_lora_receiver_id";
+    } else if (strcmp(candidate.lora.ssid, settings_.lora.ssid) != 0 || !settings_.lora.enabled()) {
+      return "invalid_lora_receiver_id";
+    }
+    if (password.isUnbound()) {
+      if (!settings_.lora.enabled() || strcmp(candidate.lora.ssid, settings_.lora.ssid) != 0 ||
+          strcmp(candidate.lora.receiverId, settings_.lora.receiverId) != 0) return "lora_password_required";
+    } else if (!copyField(password, candidate.lora.password) || strlen(candidate.lora.password) < 16) {
+      return "invalid_lora_password";
+    }
+    return nullptr;
   }
 
   const char* applyWifiFields(const JsonDocument& command, ProvisioningSettings& candidate) {
@@ -250,8 +377,9 @@ class BleProvisioning : private BLEServerCallbacks, private BLECharacteristicCal
     reply["device_id"] = deviceId_;
     reply["name"] = settings_.name;
     reply["node"] = node_;
-    reply["lora_ssid"] = "";
-    reply["lora_supported"] = false;
+    reply["lora_ssid"] = settings_.lora.ssid;
+    reply["lora_receiver_id"] = settings_.lora.receiverId;
+    reply["lora_supported"] = radioReady_;
     reply["wifi_ssid"] = settings_.wifi.ssid;
     reply["wifi_saved"] = settings_.wifiSaved;
     reply["wifi_connected"] = !wifiChangePending && wifiConnected_.load();
@@ -266,6 +394,7 @@ class BleProvisioning : private BLEServerCallbacks, private BLECharacteristicCal
   }
 
   void sendReply(const JsonDocument& reply) {
+    if (session_.load() != responseSession_) return;
     uint8_t serialized[512]{};
     const size_t size = measureJson(reply);
     if (reply.overflowed() || size >= sizeof(serialized)) return;

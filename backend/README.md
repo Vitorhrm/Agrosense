@@ -98,13 +98,14 @@ Cinco testes automatizados passaram. Firmware do receptor compilado e gravado na
 1. Crie um projeto Supabase e aplique `supabase/schema.sql`, seguido dos arquivos de `supabase/migrations/` na ordem do nome.
 2. Na Vercel, configure as variáveis de `.env.example` para a API. Mantenha `SUPABASE_SECRET_KEY`, `INGEST_TOKEN`, `SESSION_SECRET` e `DASHBOARD_PASSWORD` no ambiente do servidor. A chave NVIDIA é opcional.
 3. No app, use o endereço do projeto Supabase e a chave pública publishable. Configure `VITE_AGROSENSE_API_URL` com a origem da API publicada. Abra o cadastro e confirme o e-mail se o Supabase exigir.
-4. No SQL Editor, autorize o usuário da bancada. Troque o e-mail de exemplo pelo e-mail da conta confirmada:
+4. Emita um código de ativação de uso único para a estação. Gere 16 bytes aleatórios e represente-os como 32 caracteres hexadecimais minúsculos. Grave apenas o SHA-256 e a validade, usando o SQL Editor com acesso administrativo:
 
    ```sql
-   insert into public.agro_station_access (user_id, node)
-   select id, 'station1' from auth.users where email = 'conta@example.com'
-   on conflict do nothing;
+   insert into agro_private.station_activation (node, code_hash, expires_at)
+   values ('station1', sha256(convert_to('<codigo-hexadecimal>', 'UTF8')), now() + interval '30 days');
    ```
+
+   Entregue o código ao dono da estação por um canal privado. O usuário entra no aplicativo, conecta o transmissor por Bluetooth e ativa a estação na própria conta.
 
 5. Em **Áreas e culturas**, cadastre a área e associe `station1`. No receptor, configure a URL HTTPS da nova API e o mesmo `INGEST_TOKEN`, usando os arquivos locais ignorados pelo Git. Em **Telemetria**, verifique o horário e o identificador da primeira coleta.
 

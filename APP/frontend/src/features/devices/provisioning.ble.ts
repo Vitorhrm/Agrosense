@@ -7,6 +7,8 @@ export type BleDevice = {
   rssi: number
 }
 
+export type LoraNetwork = { ssid: string; receiver_id: string; rssi: number }
+
 export type DeviceInfo = {
   device_id: string
   role: DeviceRole
@@ -16,12 +18,14 @@ export type DeviceInfo = {
   wifi_saved?: boolean
   wifi_connected?: boolean
   lora_ssid?: string
+  lora_receiver_id?: string
   lora_supported?: boolean
 }
 
 type BleMessage = Partial<DeviceInfo> & {
   ok: boolean
-  op?: "info" | "save"
+  op?: "info" | "save" | "scan_lora"
+  networks?: unknown
   error?: string
 }
 
@@ -61,6 +65,7 @@ export function readDeviceInfo(payload: BleMessage, role: DeviceRole): DeviceInf
     wifi_saved: payload.wifi_saved,
     wifi_connected: payload.wifi_connected,
     lora_ssid: payload.lora_ssid,
+    lora_receiver_id: payload.lora_receiver_id,
     lora_supported: payload.lora_supported,
   }
 }
@@ -71,6 +76,7 @@ export type DeviceForm = {
   wifiPassword: string
   openWifi: boolean
   loraSsid: string
+  loraReceiverId: string
   loraPassword: string
 }
 
@@ -81,10 +87,40 @@ type SaveCommand = {
   wifi_password?: string
   lora_ssid?: string
   lora_password?: string
+  lora_receiver_id?: string
 }
 
 const encoder = new TextEncoder()
 const byteLength = (value: string) => encoder.encode(value).length
+const validReceiverId = /^[0-9a-f]{12}$/
+
+function validLoraText(value: string, minimum: number, maximum: number) {
+  const bytes = byteLength(value)
+  const hasControl = Array.from(value).some(character => {
+    const code = character.charCodeAt(0)
+    return code < 32 || code === 127
+  })
+  return !hasControl && bytes >= minimum && bytes <= maximum
+}
+
+export function readLoraNetworks(payload: unknown): LoraNetwork[] | null {
+  if (!Array.isArray(payload)) return null
+  const networks = new Map<string, LoraNetwork>()
+  for (const network of payload) {
+    if (
+      !network || typeof network !== "object" ||
+      typeof network.ssid !== "string" || !validLoraText(network.ssid, 1, 32) ||
+      typeof network.receiver_id !== "string" || !validReceiverId.test(network.receiver_id) ||
+      !Number.isFinite(network.rssi)
+    ) continue
+    const key = network.receiver_id + ":" + network.ssid
+    const previous = networks.get(key)
+    if (!previous || network.rssi > previous.rssi) {
+      networks.set(key, { ssid: network.ssid, receiver_id: network.receiver_id, rssi: network.rssi })
+    }
+  }
+  return [...networks.values()].sort((first, second) => second.rssi - first.rssi)
+}
 
 export function buildSaveCommand(form: DeviceForm, current: DeviceInfo): SaveCommand {
   const name = form.name.trim()
@@ -109,9 +145,18 @@ export function buildSaveCommand(form: DeviceForm, current: DeviceInfo): SaveCom
     }
   }
 
-  if (current.lora_supported && (form.loraSsid !== (current.lora_ssid ?? "") || form.loraPassword)) {
+  const transmitter = current.role === "transmitter"
+  const loraChanged = form.loraSsid !== (current.lora_ssid ?? "") ||
+    (transmitter && form.loraReceiverId !== (current.lora_receiver_id ?? ""))
+  if (current.lora_supported && (loraChanged || form.loraPassword)) {
+    if (!validLoraText(form.loraSsid, 1, 32)) throw new Error("Informe um SSID LoRa de 1 a 32 bytes, sem caracteres de controle.")
+    if (transmitter && !validReceiverId.test(form.loraReceiverId)) throw new Error("Selecione um receptor na busca LoRa.")
+    if (!validLoraText(form.loraPassword, 16, 64)) {
+      throw new Error("Informe uma senha LoRa de 16 a 64 bytes, sem caracteres de controle.")
+    }
     command.lora_ssid = form.loraSsid
-    if (form.loraPassword) command.lora_password = form.loraPassword
+    if (transmitter) command.lora_receiver_id = form.loraReceiverId
+    command.lora_password = form.loraPassword
   }
   return command
 }

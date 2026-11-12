@@ -207,4 +207,5 @@ O nome exibido e o vinculo com a area podem ser alterados pelo app. NODE_ID
 continua sendo a identidade da coleta no radio e no banco.
 Configure as referencias ADC medidas em SoilCalibrationConfig.h para enviar
 soil_index_pct (indice relativo 0 a 100), junto de soil_raw.
-A busca de SSID e a senha LoRa ainda nao estao implementadas.
+Configure o SSID e a senha no receptor antes de iniciar a busca de redes
+LoRa no transmissor. Os modems precisam estar no mesmo canal e modo RF.
