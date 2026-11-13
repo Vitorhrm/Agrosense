@@ -72,7 +72,7 @@ function AreaForecast({ latitude, longitude }: { latitude: number; longitude: nu
   </section>
 }
 
-export function CropScreen({ go }: { go: (screen: Screen) => void }) {
+export function CropScreen({ go, mode = "manage" }: { go: (screen: Screen) => void; mode?: "manage" | "weather" | "new" }) {
   const [areas, setAreas] = useState<Area[]>([])
   const [stations, setStations] = useState<Station[]>([])
   const [selected, setSelected] = useState("")
@@ -87,15 +87,17 @@ export function CropScreen({ go }: { go: (screen: Screen) => void }) {
     async function load() {
       try {
         const client = getSupabase()
+        // O Supabase aplica as permissões da sessão às duas consultas.
         const [areaRows, stationRows] = await Promise.all([
           client.from("agro_areas").select("*").order("name").abortSignal(controller.signal),
-          client.from("agro_station_access").select("node,area_id,dry_adc,wet_adc").order("node").abortSignal(controller.signal),
+          mode === "weather" ? { data: [], error: null } :
+            client.from("agro_station_access").select("node,area_id,dry_adc,wet_adc").order("node").abortSignal(controller.signal),
         ])
         if (controller.signal.aborted) return
         if (areaRows.error || stationRows.error) throw new Error()
         setAreas(areaRows.data)
         setStations(stationRows.data)
-        setSelected(areaRows.data[0]?.id ?? "")
+        setSelected(mode === "new" ? "" : areaRows.data[0]?.id ?? "")
       } catch {
         if (!controller.signal.aborted) setError("Não foi possível carregar as áreas. Confira a conexão e reabra a tela.")
       } finally {
@@ -104,7 +106,7 @@ export function CropScreen({ go }: { go: (screen: Screen) => void }) {
     }
     void load()
     return () => controller.abort()
-  }, [])
+  }, [mode])
 
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -194,6 +196,23 @@ export function CropScreen({ go }: { go: (screen: Screen) => void }) {
       setBusy(false)
     }
   }
+
+  if (mode === "weather") return <AppShell screen="weather" go={go}>
+    <TopBar title="Clima" subtitle="Previsão por área" />
+    <section className="page crop-management">
+      {loading ? <p role="status">Carregando áreas…</p> : error ? <p role="alert">{error}</p> : <>
+        {areas.length > 0 ? <label>Área
+          <select value={selected} onChange={event => setSelected(event.target.value)}>
+            {areas.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
+          </select>
+        </label> : <p>Cadastre uma área para consultar a previsão.</p>}
+        {area && (area.latitude !== null && area.longitude !== null
+          ? <AreaForecast key={area.id} latitude={area.latitude} longitude={area.longitude} />
+          : <p>Cadastre as coordenadas desta área para consultar a previsão.</p>)}
+        <button type="button" onClick={() => go("areas")}>Gerenciar áreas</button>
+      </>}
+    </section>
+  </AppShell>
 
   return <AppShell screen="crop" go={go}>
     <TopBar title="Áreas e culturas" back onBack={() => go("home")} />

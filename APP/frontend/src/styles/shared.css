@@ -254,5 +254,4 @@ h1, h2, h3, strong { font-family: "Manrope", sans-serif; }
 button:disabled { opacity: .6; cursor: wait; }
 
 .auth-message { margin-bottom: 14px; }
-.demo-notice { padding: 8px 18px; background: #fff2df; color: #75470b; font-size: 11px; text-align: center; }
 

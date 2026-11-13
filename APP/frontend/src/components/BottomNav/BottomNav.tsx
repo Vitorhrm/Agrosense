@@ -13,12 +13,11 @@ export function BottomNav({
     label: string
     icon: IconType
     screen: Screen
-    badge?: string
   }[] = [
     { label: "Início", icon: Home, screen: "home" },
     { label: "Áreas", icon: Map, screen: "areas" },
     { label: "Clima", icon: CloudRain, screen: "weather" },
-    { label: "Alertas", icon: Bell, screen: "alerts", badge: "2" },
+    { label: "Alertas", icon: Bell, screen: "alerts" },
     { label: "Perfil", icon: User, screen: "profile" },
   ]
   return (
@@ -40,7 +39,6 @@ export function BottomNav({
           >
             <span className="nav-icon">
               <Icon size={21} strokeWidth={active ? 2.5 : 2} />
-              {item.badge && <i>{item.badge}</i>}
             </span>
             <span>{item.label}</span>
           </button>

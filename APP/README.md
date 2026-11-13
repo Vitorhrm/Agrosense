@@ -29,7 +29,7 @@ A autenticação e as regras do frontend ficam em TypeScript. O Kotlin está res
 
 A autenticação implementa cadastro com nome e sobrenome, login por e-mail e senha, restauração e renovação de sessão, logout no dispositivo atual e proteção das telas privadas. Quando o Supabase exige confirmação de e-mail, o cadastro apresenta a orientação correspondente e aguarda uma sessão válida.
 
-Na página inicial, **Telemetria** mostra as coletas reais das estações autorizadas e **Áreas e culturas** cadastra áreas e parâmetros no banco, vincula estações e consulta previsão por coordenadas. As demais telas com dados de exemplo são identificadas como demonstração.
+Na página inicial, **Telemetria** mostra as coletas das estações autorizadas e **Áreas e culturas** cadastra áreas e parâmetros no banco e vincula estações. Em **Clima**, selecione uma área com coordenadas cadastradas para consultar a previsão real. **Alertas** indica que a geração automática está em desenvolvimento.
 
 Recuperação de senha, login social, integração com sensores e persistência dos dados agrícolas ainda não estão implementados.
 
@@ -57,7 +57,6 @@ Agrosense/
 │   │   ├── components/       Componentes reutilizáveis e seus estilos
 │   │   ├── features/auth/    Serviço, tipos, mensagens e testes de autenticação
 │   │   ├── lib/              Cliente compartilhado do Supabase
-│   │   ├── data/             Dados agrícolas de demonstração
 │   │   ├── styles/           Fontes, cores e estilos compartilhados
 │   │   ├── fonts/            Fontes locais da interface
 │   │   └── types/            Tipos compartilhados
@@ -169,7 +168,7 @@ Execute estes comandos dentro de `frontend`:
 | `npm run build:android` | Verificar tipos e gerar os assets do APK |
 | `npm run format` | Formatar o código |
 
-A suíte cobre autenticação, sessão, áreas demonstrativas, telemetria, calibração e cadastro Bluetooth com dispositivo simulado.
+A suíte cobre autenticação, sessão, navegação para áreas cadastradas, consulta de clima, telemetria, calibração e cadastro Bluetooth com dispositivo simulado.
 
 Para uma validação manual completa, teste também cadastro e login no seu projeto Supabase, reabertura do aplicativo com sessão ativa, saída da conta e comportamento sem conexão. Testes automatizados e compilação não substituem essa conferência no navegador e no Android.
 
