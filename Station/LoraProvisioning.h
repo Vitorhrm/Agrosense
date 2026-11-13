@@ -20,10 +20,10 @@ inline bool hex(JsonString value, size_t length) {
 }
 
 inline void encode(const uint8_t* bytes, size_t length, char* output) {
-  constexpr char HEX[] = "0123456789abcdef";
+  constexpr char hexDigits[] = "0123456789abcdef";
   for (size_t i = 0; i < length; ++i) {
-    output[2 * i] = HEX[bytes[i] >> 4];
-    output[2 * i + 1] = HEX[bytes[i] & 0xf];
+    output[2 * i] = hexDigits[bytes[i] >> 4];
+    output[2 * i + 1] = hexDigits[bytes[i] & 0xf];
   }
   output[2 * length] = '\0';
 }
