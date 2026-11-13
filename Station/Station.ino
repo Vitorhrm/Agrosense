@@ -9,7 +9,8 @@ constexpr uint8_t LOAD_SWITCH_ON = HIGH; // Inverta se a entrada EN for ativa em
 constexpr uint8_t LOAD_SWITCH_OFF = LOAD_SWITCH_ON == HIGH ? LOW : HIGH;
 constexpr uint32_t POWER_SETTLE_MS = 1000;
 constexpr uint32_t ACK_TIMEOUT_MS = 4500;
-constexpr uint8_t MAX_SEND_ATTEMPTS = 3;
+constexpr uint8_t MAX_SEND_ATTEMPTS = 5;
+constexpr uint32_t SEND_RETRY_DELAY_MS = 2000;
 constexpr int STATION_LED_PIN = -1; // Configure o GPIO do LED se ele for controlavel.
 constexpr uint8_t STATION_LED_OFF = LOW;
 static_assert(STATION_LED_PIN != LOAD_SWITCH_EN, "LED e EN precisam de pinos distintos.");
@@ -29,20 +30,22 @@ static_assert(isValidStationId(NODE_ID, sizeof(NODE_ID) - 1),
 #include "SoilCalibration.h"
 #include "SoilCalibrationConfig.h"
 #include "BleProvisioning.h"
+#include "PendingCollections.h"
 
 HardwareSerial loraSerial(2); // UART2 dedicada ao modem.
 RadioLink radio(loraSerial); // Transporte UART e configuracao do modem.
 SensorReadings sensors; // Leitura dos sensores ambientais.
 BleProvisioning provisioning(radio);
+PendingCollections pendingCollections;
 char bootId[17]{};
 bool radioReady = false; // Configuracao do modem confirmada.
 
 
 // Le os sensores e entrega um JSON ao modem; a intensidade sera medida no Access Point.
-void collectAndSend() {
-  JsonDocument message; // Uma coleta; nao contem RSSI, SNR ou classificacao local.
+void collectReading(JsonDocument& message) { // Uma coleta; nao contem RSSI, SNR ou classificacao local.
   message["v"] = 1;
   message["node"] = NODE_ID;
+  message["b"] = bootId;
   message["seq"] = 1; // Uma coleta por despertar, com bootId exclusivo.
   message["uptime_ms"] = millis(); // Tempo desde o boot, nao horario de calendario.
   sensors.collect(message, SOIL_SENSOR_ENABLED, SOIL_ANALOG_PIN);
@@ -55,21 +58,25 @@ void collectAndSend() {
       Serial.printf("Solo: indice relativo %.1f/100 (referencias locais).\n", soilIndex);
     }
   }
+}
+
+bool sendReading(const JsonDocument& message) {
   const auto& network = provisioning.loraNetwork();
   JsonDocument protectedMessage;
   const JsonDocument* wire = &message;
-  const char* expectedReceipt = bootId;
+  const char* sampleId = message["b"].as<const char*>();
+  if (!sampleId) return false;
+  const char* expectedReceipt = sampleId;
   if (network.enabled()) {
-    if (!LoraAuth::encodeReading(message, network, bootId, protectedMessage)) return;
+    if (!LoraAuth::encodeReading(message, network, sampleId, protectedMessage)) return false;
     wire = &protectedMessage;
     expectedReceipt = protectedMessage["h"].as<const char*>();
-  } else {
-    message["b"] = bootId;
   }
 
   // Reenvia a mesma coleta para que o Access Point possa reconhecer duplicatas.
   for (uint8_t attempt = 0; attempt < MAX_SEND_ATTEMPTS; ++attempt) {
-    if (!radio.send(*wire)) break;
+    if (attempt > 0) delay(SEND_RETRY_DELAY_MS);
+    if (!radio.send(*wire)) continue;
     loraSerial.flush();
     const uint32_t started = millis();
     while (static_cast<uint32_t>(millis() - started) < ACK_TIMEOUT_MS) {
@@ -84,13 +91,40 @@ void collectAndSend() {
              (LoraAuth::proof("collection-ack-v1", network, expectedReceipt, expectedProof) &&
               LoraAuth::matches(reply["h"].as<JsonString>(), expectedProof)))) {
           Serial.println("Coleta confirmada pelo Access Point.");
-          return;
+          return true;
         }
       }
       delay(1);
     }
   }
-  Serial.println("Access Point nao confirmou a coleta. A Station voltara a tentar no proximo ciclo.");
+  return false;
+}
+
+void collectAndSend() {
+  JsonDocument latest;
+  collectReading(latest);
+  if (!pendingCollections.append(latest)) {
+    Serial.println("Falha ao gravar a coleta na fila. Tentando envio direto.");
+    if (radioReady) sendReading(latest);
+    return;
+  }
+  if (!radioReady) return;
+  for (size_t sent = 0; sent < PendingCollections::DRAIN_LIMIT && !pendingCollections.empty(); ++sent) {
+    JsonDocument reading;
+    if (!pendingCollections.front(reading)) {
+      Serial.println("Registro invalido na fila de coletas.");
+      if (!pendingCollections.pop()) return;
+      continue;
+    }
+    if (!sendReading(reading)) {
+      Serial.println("Cinco tentativas sem ACK. A coleta fica na fila para o proximo ciclo.");
+      return;
+    }
+    if (!pendingCollections.pop()) {
+      Serial.println("Falha ao remover coleta confirmada da fila.");
+      return;
+    }
+  }
 }
 
 // Libera os sinais ligados aos dispositivos antes de cortar a alimentacao.
@@ -137,6 +171,7 @@ void setup() {
   const bool timerWake = esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_TIMER;
   delay(POWER_SETTLE_MS);
   provisioning.load("AgroSense-Station");
+  pendingCollections.begin();
   radioReady = radio.begin(LORA_RX_PIN, LORA_TX_PIN, LORA_BAUD_RATE, true);
   sensors.begin(I2C_SDA_PIN, I2C_SCL_PIN);
   if (SOIL_SENSOR_ENABLED) {
@@ -150,7 +185,7 @@ void setup() {
 
   // Despertar normal nao inicializa BLE. Wi-Fi nao e usado na Station.
   if (timerWake) {
-    if (radioReady) collectAndSend();
+    collectAndSend();
     sleepStation();
     return;
   }
@@ -166,7 +201,7 @@ void loop() {
   provisioning.update();
   if (provisioning.configurationFinished()) {
     if (BLEDevice::getInitialized()) BLEDevice::deinit(false);
-    if (radioReady) collectAndSend();
+    collectAndSend();
     sleepStation();
   }
   delay(1);

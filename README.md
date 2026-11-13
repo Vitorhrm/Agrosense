@@ -479,6 +479,6 @@ Ligue G a GND, EN ao GPIO25, VI a 3V3 e VO ao VCC dos sensores e do rádio LoRa.
 
 Ao ligar ou reiniciar manualmente, o Bluetooth fica disponível por até cinco minutos. Ao salvar e desconectar, o ESP32 encerra o Bluetooth, coleta e aguarda o ACK do Access Point. Nos despertares pelo timer, ele liga os periféricos, espera a estabilização, coleta, transmite e volta a dormir por 15 minutos. O Wi-Fi da Station não é inicializado.
 
-O ACK confirma que o Access Point aceitou a coleta na fila local. O envio HTTPS ocorre depois. Sem ACK, a Station tenta até três vezes com a mesma coleta e dorme mesmo assim para preservar a bateria. Se o rádio estiver pareado, o ACK é autenticado.
+O ACK confirma que o Access Point aceitou a coleta na fila local. O envio HTTPS ocorre depois. A Station grava cada coleta em uma fila de flash com 24 posições. Ela envia da mais antiga para a mais nova, até quatro por despertar, e remove cada leitura depois do ACK. Se faltar confirmação, tenta até cinco vezes, com pausa de dois segundos, e volta a dormir por 15 minutos. Quando a fila enche, preserva as 24 coletas mais recentes. O horário exibido na nuvem é o de recebimento, então uma coleta atrasada não carrega o horário original de aquisição. Se o rádio estiver pareado, o ACK é autenticado.
 
 Para um LED controlável por GPIO, configure `STATION_LED_PIN` e `STATION_LED_OFF`. LEDs ligados direto à alimentação exigem corte físico para apagar. O consumo real e a estabilidade da saída VO durante a transmissão precisam ser medidos na bancada.
