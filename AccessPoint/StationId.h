@@ -2,7 +2,7 @@
 
 #include <stddef.h>
 
-// Mantenha a mesma regra no Transmissor e em backend/lib/domain.js.
+// Mantenha a mesma regra na Station e em backend/lib/domain.js.
 constexpr bool isValidStationId(const char* id, size_t length) {
   if (!id || length == 0 || length > 24) return false;
 

@@ -4,12 +4,12 @@ O método de dois pontos é uma normalização inicial. Não existe um par unive
 
 ## Procedimento
 
-1. Use o ESP32 **transmissor**, com AO no GPIO34, alimentação e cabos iguais aos da montagem definitiva. Este sketch substitui temporariamente o firmware de coleta nesse ESP32; não grave no receptor.
+1. Use o ESP32 **Station**, com AO no GPIO34, alimentação e cabos iguais aos da montagem definitiva. Este sketch substitui temporariamente o firmware de coleta nesse ESP32; não grave no Access Point.
 2. Grave `CalibracaoSolo.ino`. Abra o Monitor Serial em **115200 baud**. O sketch mostra a média de 64 amostras e o mínimo/máximo a cada segundo.
 3. Prepare uma amostra de referência seca do solo que será utilizado. Mantenha profundidade de inserção, compactação e posição constantes. Aguarde leituras estáveis e envie **D** para capturar a referência seca.
 4. Prepare uma amostra saturada do mesmo solo, umedecida de forma uniforme e sem bolsões de ar. Documente como a saturação foi obtida. Mantenha a mesma geometria de medição, aguarde estabilizar e envie **M**.
-5. Envie **P**. Copie as duas constantes exibidas para `Transmissor/SoilCalibrationConfig.h`.
-6. Grave novamente `Transmissor/Transmissor.ino`. O Serial do transmissor passa a mostrar o índice relativo de 0 a 100 junto das coletas.
+5. Envie **P**. Copie as duas constantes exibidas para `Station/SoilCalibrationConfig.h`.
+6. Grave novamente `Station/Station.ino`. O Serial da Station passa a mostrar o índice relativo de 0 a 100 junto das coletas.
 
 Repita as medições de cada condição para verificar a repetibilidade antes de aceitar as referências. Se a amplitude do ruído for comparável à diferença entre seco e saturado, a calibração não é adequada: revise a montagem e a medição. Os comandos capturam somente um conjunto; não detectam automaticamente se o solo está seco ou saturado. As referências do sketch de calibração são temporárias e se perdem ao reiniciar.
 
@@ -25,7 +25,7 @@ O cálculo aceita a polaridade observada nas referências. Valores inválidos, i
 
 **0 e 100 são os extremos escolhidos para esta montagem. Não representam porcentagem real de água no solo, umidade relativa do ar, capacidade de campo ou limites de irrigação.** Saturação e capacidade de campo são condições diferentes. Não há classificação automática seco/bom/molhado nem limiar de irrigação neste código.
 
-O índice é mostrado **apenas no Serial do transmissor**. O JSON LoRa e a API continuam recebendo `soil_raw`: isso preserva o protocolo e o limite de 229 bytes do pacote existente. O receptor e a IA continuam tratando o solo como ADC bruto. Não foi alterado o frontend experimental.
+O índice é mostrado **apenas no Serial da Station**. O JSON LoRa e a API continuam recebendo `soil_raw`: isso preserva o protocolo e o limite de 229 bytes do pacote existente. O Access Point e a IA continuam tratando o solo como ADC bruto. Não foi alterado o frontend experimental.
 
 Para obter teor de água adequado a uma análise quantitativa do TCC, obtenha várias amostras com umidades conhecidas por método gravimétrico, ajuste uma curva específica para o solo/sensor e valide com amostras independentes. Conversão gravimétrica para volumétrica também exige densidade aparente. A normalização de dois pontos não substitui essa etapa.
 
@@ -48,4 +48,4 @@ Um projeto com a inscrição exata **v2.0.0**, ESP32-C6 e alimentação 3,3 V me
 
 Um estudo com sondas v2.0 encontrou resposta não linear e perda de sensibilidade em condições muito úmidas. Os autores ajustaram curvas para oito solos na escala do próprio equipamento. Para estimar teor volumétrico, repita esse método no seu solo com vários pontos de referência e valide a faixa útil. [Strypsteen et al., 2026](https://doi.org/10.3390/s26113291).
 
-Com a estação já coletando, use **Telemetria** para anotar várias leituras ADC em cada condição e salve as médias em **Áreas e culturas → Estações**. Para gravar o índice no pacote LoRa, preencha as mesmas referências em `Transmissor/SoilCalibrationConfig.h` quando for regravar o transmissor.
+Com a estação já coletando, use **Telemetria** para anotar várias leituras ADC em cada condição e salve as médias em **Áreas e culturas → Estações**. Para gravar o índice no pacote LoRa, preencha as mesmas referências em `Station/SoilCalibrationConfig.h` quando for regravar a Station.

@@ -116,7 +116,7 @@ inline bool decodeReading(const JsonDocument& wire, const ProvisionedLora& netwo
   unscale(message, "air_rh_pct", wire["a"], 100);
   unscale(message, "pressure_hpa", wire["p"], 100);
   if (!wire["i"].isNull()) unscale(message, "soil_index_pct", wire["i"], 10);
-  // A API deduplica reenvios RF autenticados pelo mesmo UUID, inclusive apos reinicio do receptor.
+  // A API deduplica reenvios RF autenticados pelo mesmo UUID, inclusive apos reinicio do Access Point.
   snprintf(eventId, sizeof(eventId), "%.8s-%.4s-%.4s-%.4s-%.4s%.8s",
       tag, tag + 8, tag + 12, tag + 16, tag + 20, wire["b"].as<const char*>());
   return !message.overflowed();

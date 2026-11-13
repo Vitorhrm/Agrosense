@@ -13,7 +13,7 @@
 #include "LoraProvisioning.h"
 #include "ProvisioningSettings.h"
 
-// Mantenha as copias em Transmissor e Receptor iguais para abrir cada sketch separadamente.
+// Mantenha as copias em Station e Access Point iguais para abrir cada sketch separadamente.
 class BleProvisioning : private BLEServerCallbacks, private BLECharacteristicCallbacks {
  public:
   explicit BleProvisioning(RadioLink& radio) : lora_(radio) {}
@@ -120,6 +120,10 @@ class BleProvisioning : private BLEServerCallbacks, private BLECharacteristicCal
 
   const ProvisionedLora& loraNetwork() const { return settings_.lora; }
   bool loraBusy() const { return lora_.busy(); }
+  bool configurationFinished() const {
+    return advertising_ == nullptr || !withinWindow() ||
+        (configurationSaved_ && session_.load() != savedSession_);
+  }
 
   bool takeWifiChange(ProvisionedWifi& wifi) {
     return wifiQueue_ && xQueueReceive(wifiQueue_, &wifi, 0) == pdTRUE;
@@ -157,6 +161,8 @@ class BleProvisioning : private BLEServerCallbacks, private BLECharacteristicCal
   std::atomic<bool> advertiseAgain_{false};
   std::atomic<bool> wifiConnected_{false};
   std::atomic<bool> closed_{false};
+  bool configurationSaved_ = false;
+  uint32_t savedSession_ = 0;
   bool storageReady_ = false;
   bool receiver_ = false;
   bool radioReady_ = false;
@@ -322,6 +328,8 @@ class BleProvisioning : private BLEServerCallbacks, private BLECharacteristicCal
       xQueueOverwrite(wifiQueue_, &settings_.wifi);
     }
     sendInfo("save", wifiChanged);
+    configurationSaved_ = true;
+    savedSession_ = responseSession_;
   }
 
   const char* applyLoraFields(const JsonDocument& command, ProvisioningSettings& candidate) {

@@ -1,7 +1,10 @@
 #include <Arduino.h>
 #include <math.h>
+#include <driver/rtc_io.h>
 
-constexpr int SOIL_PIN = 34; // AO do sensor na mesma entrada usada pelo transmissor.
+constexpr gpio_num_t LOAD_SWITCH_EN = GPIO_NUM_25;
+constexpr uint8_t LOAD_SWITCH_ON = HIGH; // Mesma polaridade usada pela Station.
+constexpr int SOIL_PIN = 34; // AO do sensor na mesma entrada usada pela Station.
 constexpr uint32_t SAMPLE_INTERVAL_MS = 1000; // Intervalo entre conjuntos de amostras.
 constexpr uint16_t SAMPLE_COUNT = 64; // Amostras por conjunto para observar ruido e media.
 int dryReference = -1; // Referencia seca capturada com D; perdida ao reiniciar.
@@ -28,7 +31,7 @@ void printReferences() {
   if (dryReference < 0 || wetReference < 0 || dryReference == wetReference) {
     Serial.println("Calibracao incompleta: capture D e M com valores diferentes."); return;
   }
-  Serial.println("Copie para Transmissor/SoilCalibrationConfig.h e grave o transmissor novamente:");
+  Serial.println("Copie para Station/SoilCalibrationConfig.h e grave a Station novamente:");
   Serial.printf("constexpr int SOIL_DRY_REFERENCE = %d;\n", dryReference);
   Serial.printf("constexpr int SOIL_WET_REFERENCE = %d;\n", wetReference);
   Serial.println("Indice relativo: 0=referencia seca; 100=referencia saturada. Nao e teor volumetrico.");
@@ -37,6 +40,11 @@ void printReferences() {
 // Inicia apenas o ADC e o Serial; nao configura radio, Wi-Fi ou sensores I2C.
 void setup() {
   Serial.begin(115200);
+  rtc_gpio_hold_dis(LOAD_SWITCH_EN);
+  rtc_gpio_deinit(LOAD_SWITCH_EN);
+  pinMode(LOAD_SWITCH_EN, OUTPUT);
+  digitalWrite(LOAD_SWITCH_EN, LOAD_SWITCH_ON);
+  delay(1000);
   pinMode(SOIL_PIN, INPUT);
   analogReadResolution(12);
   analogSetPinAttenuation(SOIL_PIN, ADC_11db);

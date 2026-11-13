@@ -21,13 +21,13 @@ const waitMs: Partial<Record<Step, number>> = { scanning: 15000, connect: 25000,
 const loraErrors = new Map([
   ["lora_unavailable", "Rádio LoRa indisponível. Confira a conexão do módulo e tente novamente."],
   ["lora_busy", "O rádio LoRa está ocupado. Aguarde e tente novamente."],
-  ["lora_pair_timeout", "O receptor não confirmou o pareamento. Confira se está ligado, se a rede selecionada é a correta e se a senha corresponde à do receptor."],
+  ["lora_pair_timeout", "O Access Point não confirmou o pareamento. Confira se está ligado, se a rede selecionada é a correta e se a senha corresponde à do Access Point."],
   ["lora_send_failed", "O rádio não conseguiu enviar a solicitação LoRa. Tente novamente."],
   ["invalid_lora_password", "O dispositivo recusou a senha LoRa. Use de 16 a 64 bytes, sem caracteres de controle."],
-  ["lora_password_required", "Informe a senha LoRa para trocar de rede ou receptor."],
+  ["lora_password_required", "Informe a senha LoRa para trocar de rede ou Access Point."],
   ["invalid_lora_ssid", "O dispositivo recusou o SSID LoRa. Use de 1 a 32 bytes, sem caracteres de controle."],
   ["lora_ssid_required", "Informe o nome da rede LoRa."],
-  ["invalid_lora_receiver_id", "O identificador do receptor é inválido. Busque e selecione o receptor novamente."],
+  ["invalid_lora_receiver_id", "O identificador do Access Point é inválido. Busque e selecione o Access Point novamente."],
 ])
 
 export function useDeviceProvisioning(bridge: BleBridge | undefined, userId: string) {
@@ -125,7 +125,7 @@ export function useDeviceProvisioning(bridge: BleBridge | undefined, userId: str
       } else if (detail.type === "message" && step === "lora-scan" && detail.payload && (!detail.payload.op || detail.payload.op === "scan_lora")) {
         const networks = detail.payload.ok ? readLoraNetworks(detail.payload.networks) : null
         if (networks) update({ step: "edit", loraNetworks: networks })
-        else update({ step: "edit", error: loraErrors.get(detail.payload.error ?? "") ?? "O transmissor não conseguiu concluir a busca LoRa. Tente novamente." })
+        else update({ step: "edit", error: loraErrors.get(detail.payload.error ?? "") ?? "O Station não conseguiu concluir a busca LoRa. Tente novamente." })
       } else if (detail.type === "message" && role && (step === "read" || step === "save")) {
         const response = detail.payload
         if (!response || (response.op && response.op !== (step === "read" ? "info" : "save"))) return
@@ -168,7 +168,7 @@ export function useDeviceProvisioning(bridge: BleBridge | undefined, userId: str
     const timeout = window.setTimeout(() => {
       if (current.current.step !== state.step) return
       if (state.step === "lora-scan") {
-        update({ step: "edit", error: "O transmissor não retornou a busca LoRa a tempo. Tente novamente." })
+        update({ step: "edit", error: "O Station não retornou a busca LoRa a tempo. Tente novamente." })
         return
       }
       recover(state.step === "save"

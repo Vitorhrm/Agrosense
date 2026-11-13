@@ -35,8 +35,8 @@ class CloudUploader {
   }
 
   // Preserva o UUID autenticado do radio ou gera um para a coleta legada.
-  void enqueue(const JsonDocument& reading, const char* authenticatedEventId) {
-    if (!queue_) return;
+  bool enqueue(const JsonDocument& reading, const char* authenticatedEventId) {
+    if (!queue_) return false;
     JsonDocument payload; // Copia independente do buffer que sera reutilizado pelo radio.
     for (const char* field : {"v", "node", "seq", "uptime_ms", "temp_c", "air_rh_pct",
                               "pressure_hpa", "soil_raw", "soil_enabled", "signal"}) {
@@ -57,12 +57,14 @@ class CloudUploader {
     payload["event_id"] = authenticatedEventId ? authenticatedEventId : eventId;
     PendingReading pending{}; // Registro completo que sera copiado para a fila.
     if (payload.overflowed() || measureJson(payload) >= sizeof(pending.json)) {
-      Serial.println("Nuvem: coleta excede o buffer de envio."); return;
+      Serial.println("Nuvem: coleta excede o buffer de envio."); return false;
     }
     serializeJson(payload, pending.json, sizeof(pending.json));
     if (xQueueSend(queue_, &pending, 0) != pdTRUE) {
       Serial.println("Nuvem: fila cheia; esta coleta ficou apenas no Serial.");
+      return false;
     }
+    return true;
   }
 
  private:

@@ -1,4 +1,4 @@
-#include "../Transmissor/SoilCalibration.h"
+#include "../Station/SoilCalibration.h"
 
 // Verifica a implementacao real em tempo de compilacao, sem depender de hardware conectado.
 static_assert(!SoilCalibration::valid(-1, -1), "Referencias ausentes devem ser rejeitadas");

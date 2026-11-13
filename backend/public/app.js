@@ -41,7 +41,7 @@ async function refresh() {
     $('soil').textContent = station.soil_enabled ? format(station.soil_raw, 'ADC', 0) : 'Desativado';
     $('signal').textContent = station.signal; $('last-update').textContent = date(station.received_at);
     const ageSeconds = Math.max(0, (Date.now() - Date.parse(station.received_at)) / 1000);
-    $('connection').textContent = ageSeconds < 60 ? '● Recebendo coletas' : '◷ Sem coleta recente';
+    $('connection').textContent = ageSeconds < 20 * 60 ? '● Dentro do intervalo de coleta' : '◷ Sem coleta recente';
     const history = await api(`/api/readings?node=${encodeURIComponent(station.node)}&hours=${$('period').value}`);
     if (state.refreshPending) return;
     state.readings = history.readings; renderSummary(history.summary);

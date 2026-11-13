@@ -137,14 +137,15 @@ class DeviceProvisioning(
         }
         role = requested
         found.clear()
-        val expectedName = if (role == "transmitter") "AgroSense-TX" else "AgroSense-RX"
+        val expectedNames = if (role == "transmitter") setOf("AgroSense-Station", "AgroSense-TX") else setOf("AgroSense-AccessPoint", "AgroSense-RX")
         val callback = object : ScanCallback() {
             override fun onScanResult(callbackType: Int, result: ScanResult) {
                 handler.post {
-                    if (scan !== this || result.scanRecord?.deviceName != expectedName) return@post
+                    val deviceName = result.scanRecord?.deviceName ?: return@post
+                    if (scan !== this || deviceName !in expectedNames) return@post
                     val id = result.device.address
                     if (found.put(id, result.device) == null) {
-                        emit(event("device").put("id", id).put("name", expectedName).put("role", role).put("rssi", result.rssi))
+                        emit(event("device").put("id", id).put("name", deviceName).put("role", role).put("rssi", result.rssi))
                     }
                 }
             }

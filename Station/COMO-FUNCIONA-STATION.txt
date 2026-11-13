@@ -5,12 +5,12 @@ FUNCIONAMENTO DA STATION TRANSMISSORA — PROJETO TCC
 
 Esta station utiliza um ESP32, um módulo LoRa DX-LR32-900T22D e um módulo
 com sensores AHT20 e BMP280 para coletar dados ambientais e enviá-los por
-rádio a outro ESP32, que funciona como receptor.
+rádio a outro ESP32, que funciona como Access Point.
 
 O código também está preparado para um sensor capacitivo de umidade do solo.
 Como esse sensor ainda não está conectado, sua leitura está desativada e o
 valor enviado é zero. A station não calcula a qualidade do sinal: essa tarefa
-é feita no receptor quando ele recebe cada pacote.
+é feita no Access Point quando ele recebe cada pacote.
 
 2. COMPONENTES E LIGAÇÕES CONSIDERADAS
 
@@ -37,10 +37,10 @@ O ESP32 abre a comunicação USB a 115200 baud e a UART do LoRa a 9600 baud.
 O programa verifica a comunicação AT com o modem e configura:
   - transmissão transparente;
   - tamanho de pacote de 230 bytes;
-  - byte RSSI desativado na UART desta station, que só transmite as coletas.
+  - byte RSSI ativado na UART desta station, que só transmite as coletas.
 
 Canal, velocidade pelo ar e chave dos rádios não são alterados pelo código.
-Esses parâmetros devem ser compatíveis com os do receptor.
+Esses parâmetros devem ser compatíveis com os do Access Point.
 
 Se a configuração do modem não for confirmada, a station informa erro no
 Monitor Serial e não inicia os envios. Depois de corrigir as ligações ou a
@@ -50,12 +50,10 @@ O código inicializa o AHT20 e procura o BMP280 nos endereços I2C 0x76 e 0x77.
 
 4. CICLO DE COLETA E TRANSMISSÃO
 
-A primeira coleta acontece após a inicialização. As seguintes são agendadas
-pelo intervalo COLLECTION_INTERVAL_MS, no início do arquivo Transmissor.ino.
-O padrão é 10000 ms, isto é, 10 segundos. O mínimo efetivo é 2 segundos.
+A primeira coleta ocorre após encerrar a configuração Bluetooth. As seguintes ocorrem após cada despertar de deep sleep.
 
-Em cada coleta, a station:
-  1. Incrementa o número da coleta.
+Em cada coleta, a Station:
+  1. Identifica a coleta com um ID aleatório do despertar.
   2. Lê a temperatura e a umidade relativa do ar no AHT20.
   3. Lê a pressão atmosférica no BMP280 e converte de Pa para hPa.
   4. Lê o solo apenas se SOIL_SENSOR_ENABLED estiver ativado.
@@ -63,8 +61,7 @@ Em cada coleta, a station:
   6. Envia o JSON e uma quebra de linha ao modem por UART.
   7. Imprime a coleta enviada no Monitor Serial USB.
 
-A entrega à UART não confirma que o receptor recebeu pelo rádio. Esta versão
-não aguarda ACK nem retransmite automaticamente uma coleta perdida.
+O ACK do Access Point confirma que a coleta entrou na fila local de envio.
 
 5. CAMPOS DO JSON ENVIADO
 
@@ -81,7 +78,7 @@ soil_enabled : indica se a leitura do solo está ativada no código.
 Exemplo ilustrativo, não uma medição real:
 {"v":1,"node":"station1","seq":1,"uptime_ms":1500,"temp_c":25.4,"air_rh_pct":61.2,"pressure_hpa":931.5,"soil_raw":0,"soil_enabled":false}
 
-O campo "signal" NÃO é enviado pela station. Ele é acrescentado pelo receptor
+O campo "signal" NÃO é enviado pela station. Ele é acrescentado pelo Access Point
 ao JSON mostrado no Monitor Serial, usando o RSSI do pacote recebido.
 
 6. TRATAMENTO DOS SENSORES
@@ -98,14 +95,14 @@ não detecta automaticamente essa desconexão. Se retirar o sensor, desative-o.
 
 7. IDENTIFICAÇÃO DE MAIS STATIONS
 
-Altere NODE_ID para um nome exclusivo em cada transmissor: station1,
-station2, station3 etc. O receptor identifica a origem por esse campo.
+Altere NODE_ID para um nome exclusivo em cada Station: station1,
+station2, station3 etc. O Access Point identifica a origem por esse campo.
 Use nomes curtos para respeitar o limite de 229 bytes de JSON mais LF.
 Transmissões simultâneas podem colidir; esta versão não organiza turnos RF.
 
 8. ARQUIVOS E BIBLIOTECAS
 
-Transmissor.ino : configurações principais, agendamento e montagem do JSON.
+Station.ino : configurações principais, agendamento e montagem do JSON.
 SensorReadings.h: inicialização e leitura dos sensores.
 Aht20Reader.h   : leitura AHT20 com prazo de espera e verificação CRC-8.
 RadioLink.h     : configuração AT, limite de pacote e transporte UART.
@@ -114,7 +111,7 @@ Bibliotecas: ArduinoJson 7, Adafruit BMP280 Library e suas
 dependências. Wire e HardwareSerial fazem parte do suporte ESP32.
 Este módulo LoRa usa UART; a biblioteca LoRa para rádios SPI não é utilizada.
 
-Abra Transmissor.ino mantendo SensorReadings.h, Aht20Reader.h e RadioLink.h na mesma pasta.
+Abra Station.ino mantendo SensorReadings.h, Aht20Reader.h e RadioLink.h na mesma pasta.
 O Monitor Serial deve estar em 115200 baud.
 
 9. VALIDAÇÃO
@@ -127,7 +124,7 @@ ATUALIZACAO — DIAGNOSTICO DE INICIALIZACAO DO MODEM
 O escape +++ agora inclui CR/LF, com esperas maiores e exibicao das respostas.
 O log mostra [nenhum byte recebido do LoRa] se a UART nao receber resposta.
 Bytes nao imprimiveis aparecem em hexadecimal, por exemplo <0D><0A>.
-No receptor, se a configuracao falhar, o Monitor Serial vira uma ponte UART
+No Access Point, se a configuracao falhar, o Monitor Serial vira uma ponte UART
 para testar o modem a 9600 baud. Selecione Both NL & CR e envie +++ e AT
 separadamente. Reinicie o ESP32 depois dos testes para tentar configurar RSSI.
 M0/M1 soltos sao compativeis com o modo AT padrao SWITCH=0; em SWITCH=1,
@@ -144,7 +141,7 @@ REVISAO DO CODIGO — UART, VALIDACAO E SENSORES
 - Modo transparente, pacote 230 bytes, recepcao continua (SLEEP=2) e RSSI
   sao consultados antes de alterados, evitando reescritas desnecessarias.
 - A saida do modo AT precisa de Exit AT; Power On sozinho nao confirma sucesso.
-- O receptor limita node a 24 bytes, valida tipos/faixas dos sensores e aceita
+- O Access Point limita node a 24 bytes, valida tipos/faixas dos sensores e aceita
   null para falha ambiental. O solo desativado deve ser enviado como zero.
 - Os textos do JSON recebido sao copiados: a proxima station nao sobrescreve
   os campos de uma coleta anterior. Timeout/JSON invalido nao gera sinal falso.
@@ -163,27 +160,27 @@ Manual AHT20: https://cdn-learn.adafruit.com/assets/assets/000/091/676/original/
 ATUALIZACAO — SENSOR DE SOLO NO GPIO34
 SOIL_SENSOR_ENABLED agora esta true. A leitura soil_raw e a media de 16 amostras
 ADC de 12 bits no GPIO34, com atenuacao de 11 dB. O valor ainda nao e percentual.
-O firmware foi compilado, mas a gravacao no transmissor COM6 nao foi concluida
+O firmware foi compilado, mas a gravacao na Station COM6 nao foi concluida
 por falha de sincronizacao USB/serial. Portanto, ainda nao ha leitura fisica do
-solo confirmada nem entrega dessa leitura ao receptor.
-O receptor COM5 foi gravado e confirmou a configuracao LoRa/RSSI na bancada.
+solo confirmada nem entrega dessa leitura ao Access Point.
+O Access Point COM5 foi gravado e confirmou a configuracao LoRa/RSSI na bancada.
 Consultas AT deste modem respondem somente o valor, sem OK adicional. O codigo
 agora aceita esse comportamento; AT e comandos de escrita continuam exigindo OK.
 
 
 ATUALIZACAO — TELEMETRIA WI-FI E PAINEL
 A coleta real informada pelo usuario confirmou AHT20, BMP280 e solo no GPIO34,
-com soil_raw=3282 e sinal Muito proximo no receptor. Isso substitui a limitacao
+com soil_raw=3282 e sinal Muito proximo no Access Point. Isso substitui a limitacao
 de validacao fisica descrita na atualizacao anterior.
-O transmissor continua enviando somente pelo LoRa e nao precisa de internet.
-O receptor acrescenta signal por station, imprime o JSON e o copia para uma
+O Station continua enviando somente pelo LoRa e nao precisa de internet.
+O Access Point acrescenta signal por station, imprime o JSON e o copia para uma
 fila de envio HTTPS ao painel Vercel. O UUID event_id evita duplicatas nas
 retentativas. O worker de rede roda separado do loop de recepcao.
 
-Wi-Fi: configure WIFI_SSID e WIFI_PASSWORD em Receptor/WifiConfig.local.h.
+Wi-Fi: configure WIFI_SSID e WIFI_PASSWORD em AccessPoint/WifiConfig.local.h.
 O ESP32 classico requer 2,4 GHz; a senha nunca e impressa no Serial.
 Reconexao a cada 30 segundos, sem espera longa no loop LoRa.
-URL e token: Receptor/CloudConfig.local.h; use o mesmo INGEST_TOKEN da Vercel.
+URL e token: AccessPoint/CloudConfig.local.h; use o mesmo INGEST_TOKEN da Vercel.
 Esses dois arquivos locais nao entram no Git. Chaves NVIDIA e Supabase ficam
 somente no servidor. A falta de rede nao impede LoRa e Serial.
 
@@ -201,11 +198,11 @@ irrigacao sem calibracao. O nome do sinal e RSSI LoRa, nao sinal Wi-Fi.
 Guia completo de configuracao: backend/README.md.
 
 CONFIGURACAO NO ANDROID
-Reinicie o ESP32 e abra Configurar dispositivos no app. O anuncio AgroSense-TX
+Reinicie o ESP32 e abra Configurar dispositivos no app. O anuncio AgroSense-Station
 fica ativo por cinco minutos e o PIN aparece na serial USB a 115200.
 O nome exibido e o vinculo com a area podem ser alterados pelo app. NODE_ID
 continua sendo a identidade da coleta no radio e no banco.
 Configure as referencias ADC medidas em SoilCalibrationConfig.h para enviar
 soil_index_pct (indice relativo 0 a 100), junto de soil_raw.
-Configure o SSID e a senha no receptor antes de iniciar a busca de redes
-LoRa no transmissor. Os modems precisam estar no mesmo canal e modo RF.
+Configure o SSID e a senha no Access Point antes de iniciar a busca de redes
+LoRa na Station. Os modems precisam estar no mesmo canal e modo RF.

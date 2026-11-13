@@ -6,8 +6,8 @@ import { DeviceEditor } from "./DeviceEditor"
 import "./DeviceRegistration.css"
 
 const roleNames: Record<DeviceRole, string> = {
-  transmitter: "Transmissor",
-  receiver: "Estação (receptor)",
+  transmitter: "Station",
+  receiver: "Access Point",
 }
 
 export function DeviceRegistration({ userId }: { userId: string }) {

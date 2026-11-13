@@ -36,7 +36,7 @@ bool validReading(JsonVariantConst reading, float minimum, float maximum) {
 }
 
 // Associa o RSSI deste pacote a station identificada nele e imprime apenas o nome do sinal.
-void handleCollection(JsonDocument& message, int rssiDbm, const char* eventId) {
+bool handleCollection(JsonDocument& message, int rssiDbm, const char* eventId) {
   const JsonString node = message["node"].as<JsonString>();
   const JsonVariantConst soilIndex = message["soil_index_pct"];
   if (message["v"] != 1 || !isValidStationId(node.c_str(), node.size()) ||
@@ -50,23 +50,49 @@ void handleCollection(JsonDocument& message, int rssiDbm, const char* eventId) {
       !validReading(message["air_rh_pct"], 0, 100) ||
       !validReading(message["pressure_hpa"], 300, 1100)) {
     Serial.println("Mensagem ignorada: formato desconhecido.");
-    return;
+    return false;
   }
   message["signal"] = classifySignal(rssiDbm); // Calculado aqui para esta coleta, sem numeros RF.
-  if (message.overflowed()) { Serial.println("ERRO: memoria insuficiente para o JSON."); return; }
+  if (message.overflowed()) { Serial.println("ERRO: memoria insuficiente para o JSON."); return false; }
   serializeJson(message, Serial); // Exemplo: {"node":"station1",...,"signal":"Bom"}
   Serial.println();
-  cloudUploader.enqueue(message, eventId); // Copia o JSON e o identificador para envio HTTPS.
+  return cloudUploader.enqueue(message, eventId); // Copia o JSON e o identificador para envio HTTPS.
 }
 
-// Habilita RSSI anexado no receptor e verifica a resposta AT antes de receber coletas.
+// Confirma a entrada na fila local, que ainda será enviada por HTTPS.
+char lastQueuedReceipt[25]{};
+char lastQueuedNetworkProof[25]{};
+
+bool alreadyQueued(const char* receipt, const ProvisionedLora& network) {
+  if (strcmp(lastQueuedReceipt, receipt) != 0) return false;
+  if (!network.enabled()) return lastQueuedNetworkProof[0] == 0;
+  char proof[25];
+  return LoraAuth::proof("collection-ack-v1", network, receipt, proof) &&
+      strcmp(lastQueuedNetworkProof, proof) == 0;
+}
+
+void sendCollectionAck(const char* receipt, const ProvisionedLora& network) {
+  JsonDocument ack;
+  ack["l"] = "ack";
+  ack["receipt"] = receipt;
+  char proof[25]{};
+  if (network.enabled()) {
+    if (!LoraAuth::proof("collection-ack-v1", network, receipt, proof)) return;
+    ack["h"] = String(proof);
+  }
+  strlcpy(lastQueuedReceipt, receipt, sizeof(lastQueuedReceipt));
+  strlcpy(lastQueuedNetworkProof, proof, sizeof(lastQueuedNetworkProof));
+  radio.send(ack);
+}
+
+// Habilita RSSI anexado no Access Point e verifica a resposta AT antes de receber coletas.
 void setup() {
   Serial.begin(115200);
-  provisioning.load("AgroSense-RX", WIFI_SSID, WIFI_PASSWORD);
+  provisioning.load("AgroSense-AccessPoint", WIFI_SSID, WIFI_PASSWORD);
   receiverWifi.begin(provisioning.initialWifi());
   cloudUploader.begin(); // Token e URL ficam em CloudConfig.local.h, separado das chaves da IA.
   radioReady = radio.begin(LORA_RX_PIN, LORA_TX_PIN, LORA_BAUD_RATE, true);
-  Serial.println(radioReady ? "Receptor pronto. RSSI classificado por station. Serial: 115200."
+  Serial.println(radioReady ? "Access Point pronto. RSSI classificado por station. Serial: 115200."
       : "ERRO: modem sem configuracao RSSI confirmada. Confira ligacoes/baud e reinicie.");
   if (!radioReady) {
     Serial.printf("Diagnostico UART ativo a %lu baud: texto digitado aqui sera enviado ao LoRa.\n",
@@ -75,7 +101,7 @@ void setup() {
     Serial.println("Bytes recebidos serao exibidos abaixo em texto/hex. Nenhum RSSI sera inventado.");
   }
   provisioning.setWifiConnected(receiverWifi.isConnected());
-  provisioning.begin("AgroSense-RX", true, "", radioReady);
+  provisioning.begin("AgroSense-AccessPoint", true, "", radioReady);
 }
 
 // Ponte de diagnostico: permite testar o modem pelo Monitor Serial quando a configuracao falha.
@@ -106,12 +132,20 @@ void loop() {
     if (provisioning.handleRadio(message, receivedRssi)) continue;
     const auto& network = provisioning.loraNetwork();
     if (!network.enabled()) {
-      handleCollection(message, receivedRssi, nullptr);
+      const JsonString request = message["b"].as<JsonString>();
+      if (!LoraAuth::hex(request, 16)) {
+        handleCollection(message, receivedRssi, nullptr); // Compatibilidade com Station antiga.
+      } else if (alreadyQueued(request.c_str(), network) || handleCollection(message, receivedRssi, nullptr)) {
+        sendCollectionAck(request.c_str(), network);
+      }
     } else {
       JsonDocument reading;
       char eventId[37]{};
       if (LoraAuth::decodeReading(message, network, reading, eventId)) {
-        handleCollection(reading, receivedRssi, eventId);
+        const char* receipt = message["h"].as<const char*>();
+        if (alreadyQueued(receipt, network) || handleCollection(reading, receivedRssi, eventId)) {
+          sendCollectionAck(receipt, network);
+        }
       }
     }
   }

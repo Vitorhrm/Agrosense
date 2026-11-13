@@ -1,9 +1,9 @@
-FUNCIONAMENTO DO RECEPTOR — PROJETO TCC
+FUNCIONAMENTO DO Access Point — PROJETO TCC
 =====================================
 
 1. OBJETIVO
 
-O receptor utiliza um ESP32 e um módulo LoRa DX-LR32-900T22D para receber as
+O Access Point utiliza um ESP32 e um módulo LoRa DX-LR32-900T22D para receber as
 coletas ambientais de uma ou mais stations. Ele interpreta o JSON, identifica
 a station pelo campo node e calcula uma classificação do sinal a partir do
 RSSI medido pelo seu próprio rádio naquele pacote.
@@ -22,7 +22,7 @@ GPIO16 (RX2 do ESP32) -> TX do módulo LoRa.
 GPIO17 (TX2 do ESP32) -> RX do módulo LoRa.
 GND                 -> GND comum do ESP32 e do módulo LoRa.
 
-O receptor não precisa dos sensores AHT20/BMP280 ou do sensor de solo.
+O Access Point não precisa dos sensores AHT20/BMP280 ou do sensor de solo.
 Os dados desses sensores são recebidos das stations pelo rádio.
 A lógica UART deve ser de 3,3 V; siga a especificação de alimentação do LoRa.
 
@@ -85,16 +85,16 @@ Exemplo ilustrativo:
 {"v":1,"node":"station1","seq":1,"uptime_ms":1500,"temp_c":25.4,"air_rh_pct":61.2,"pressure_hpa":931.5,"soil_raw":0,"soil_enabled":false,"signal":"Bom"}
 
 node indica a origem. signal indica como o pacote dessa station chegou a este
-receptor. Os demais campos são os dados enviados pela própria station.
-O receptor preserva valores null dos sensores e o zero do solo desativado.
+Access Point. Os demais campos são os dados enviados pela própria station.
+O Access Point preserva valores null dos sensores e o zero do solo desativado.
 
 O resultado é impresso localmente pela USB. Não é devolvido à station por rádio.
-Nesta versão não existe ACK, retransmissão ou confirmação de recepção remota.
+O Access Point envia ACK após aceitar a coleta na fila local de envio HTTPS. Se receber de novo a última coleta confirmada, repete o ACK.
 
 7. USO COM VÁRIAS STATIONS
 
-Cada transmissor precisa de um NODE_ID único, como station1 e station2.
-O receptor processa uma coleta por vez e associa o RSSI ao node daquela coleta.
+Cada Station precisa de um NODE_ID único, como station1 e station2.
+O Access Point processa uma coleta por vez e associa o RSSI ao node daquela coleta.
 Não utiliza o RSSI de uma station para classificar outra.
 
 Os rádios devem compartilhar parâmetros RF compatíveis para comunicação.
@@ -107,14 +107,14 @@ stations online/offline. Uma linha antiga no Serial é apenas uma coleta antiga.
 
 8. ARQUIVOS E DEPENDÊNCIAS
 
-Receptor.ino : valida o JSON, classifica o sinal e imprime a coleta.
+AccessPoint.ino : valida o JSON, classifica o sinal e imprime a coleta.
 RadioLink.h  : configura o modem e separa JSON do byte binário de RSSI.
 
 Biblioteca externa: ArduinoJson 7. HardwareSerial integra o suporte ESP32.
 Não utiliza a biblioteca LoRa para SPI, pois o DX-LR32 é um modem UART.
 
-Abra Receptor.ino mantendo RadioLink.h na mesma pasta. Selecione a placa e a
-porta do ESP32 receptor. A porta detectada anteriormente foi COM5, mas ela
+Abra AccessPoint.ino mantendo RadioLink.h na mesma pasta. Selecione a placa e a
+porta do ESP32 Access Point. A porta detectada anteriormente foi COM5, mas ela
 pode mudar ao reconectar o dispositivo. Monitor Serial: 115200 baud.
 
 9. LIMITES E TESTE DE BANCADA
@@ -135,7 +135,7 @@ ATUALIZACAO — DIAGNOSTICO DE INICIALIZACAO DO MODEM
 O escape +++ agora inclui CR/LF, com esperas maiores e exibicao das respostas.
 O log mostra [nenhum byte recebido do LoRa] se a UART nao receber resposta.
 Bytes nao imprimiveis aparecem em hexadecimal, por exemplo <0D><0A>.
-No receptor, se a configuracao falhar, o Monitor Serial vira uma ponte UART
+No Access Point, se a configuracao falhar, o Monitor Serial vira uma ponte UART
 para testar o modem a 9600 baud. Selecione Both NL & CR e envie +++ e AT
 separadamente. Reinicie o ESP32 depois dos testes para tentar configurar RSSI.
 M0/M1 soltos sao compativeis com o modo AT padrao SWITCH=0; em SWITCH=1,
@@ -152,7 +152,7 @@ REVISAO DO CODIGO — UART, VALIDACAO E SENSORES
 - Modo transparente, pacote 230 bytes, recepcao continua (SLEEP=2) e RSSI
   sao consultados antes de alterados, evitando reescritas desnecessarias.
 - A saida do modo AT precisa de Exit AT; Power On sozinho nao confirma sucesso.
-- O receptor limita node a 24 bytes, valida tipos/faixas dos sensores e aceita
+- O Access Point limita node a 24 bytes, valida tipos/faixas dos sensores e aceita
   null para falha ambiental. O solo desativado deve ser enviado como zero.
 - Os textos do JSON recebido sao copiados: a proxima station nao sobrescreve
   os campos de uma coleta anterior. Timeout/JSON invalido nao gera sinal falso.
@@ -171,27 +171,27 @@ Manual AHT20: https://cdn-learn.adafruit.com/assets/assets/000/091/676/original/
 ATUALIZACAO — SENSOR DE SOLO NO GPIO34
 SOIL_SENSOR_ENABLED agora esta true. A leitura soil_raw e a media de 16 amostras
 ADC de 12 bits no GPIO34, com atenuacao de 11 dB. O valor ainda nao e percentual.
-O firmware foi compilado, mas a gravacao no transmissor COM6 nao foi concluida
+O firmware foi compilado, mas a gravacao na Station COM6 nao foi concluida
 por falha de sincronizacao USB/serial. Portanto, ainda nao ha leitura fisica do
-solo confirmada nem entrega dessa leitura ao receptor.
-O receptor COM5 foi gravado e confirmou a configuracao LoRa/RSSI na bancada.
+solo confirmada nem entrega dessa leitura ao Access Point.
+O Access Point COM5 foi gravado e confirmou a configuracao LoRa/RSSI na bancada.
 Consultas AT deste modem respondem somente o valor, sem OK adicional. O codigo
 agora aceita esse comportamento; AT e comandos de escrita continuam exigindo OK.
 
 
 ATUALIZACAO — TELEMETRIA WI-FI E PAINEL
 A coleta real informada pelo usuario confirmou AHT20, BMP280 e solo no GPIO34,
-com soil_raw=3282 e sinal Muito proximo no receptor. Isso substitui a limitacao
+com soil_raw=3282 e sinal Muito proximo no Access Point. Isso substitui a limitacao
 de validacao fisica descrita na atualizacao anterior.
-O transmissor continua enviando somente pelo LoRa e nao precisa de internet.
-O receptor acrescenta signal por station, imprime o JSON e o copia para uma
+O Station continua enviando somente pelo LoRa e nao precisa de internet.
+O Access Point acrescenta signal por station, imprime o JSON e o copia para uma
 fila de envio HTTPS ao painel Vercel. O UUID event_id evita duplicatas nas
 retentativas. O worker de rede roda separado do loop de recepcao.
 
-Wi-Fi: configure WIFI_SSID e WIFI_PASSWORD em Receptor/WifiConfig.local.h.
+Wi-Fi: configure WIFI_SSID e WIFI_PASSWORD em AccessPoint/WifiConfig.local.h.
 O ESP32 classico requer 2,4 GHz; a senha nunca e impressa no Serial.
 Reconexao a cada 30 segundos, sem espera longa no loop LoRa.
-URL e token: Receptor/CloudConfig.local.h; use o mesmo INGEST_TOKEN da Vercel.
+URL e token: AccessPoint/CloudConfig.local.h; use o mesmo INGEST_TOKEN da Vercel.
 Esses dois arquivos locais nao entram no Git. Chaves NVIDIA e Supabase ficam
 somente no servidor. A falta de rede nao impede LoRa e Serial.
 
@@ -209,16 +209,16 @@ irrigacao sem calibracao. O nome do sinal e RSSI LoRa, nao sinal Wi-Fi.
 Guia completo de configuracao: backend/README.md.
 
 VALIDACAO FISICA — 05/11/2026
-Firmware Wi-Fi/HTTPS gravado com sucesso no receptor COM5.
+Firmware Wi-Fi/HTTPS gravado com sucesso no Access Point COM5.
 Conexao ao roteador Galaxy S23 confirmada pelo Serial e pelo usuario.
 Coletas reais da station1 foram recebidas pela API e persistidas no Supabase,
 com a confirmacao Nuvem: coleta entregue e exibicao no painel publicado.
 
 CONFIGURACAO NO ANDROID
-Reinicie o ESP32 para anunciar AgroSense-RX por cinco minutos. Use o PIN
+Reinicie o ESP32 para anunciar AgroSense-AccessPoint por cinco minutos. Use o PIN
 exibido na serial USB a 115200. O app configura nome e Wi-Fi e permite
 cadastrar o gateway como geral ou associar seu registro a uma area.
 A senha Wi-Fi e gravada localmente. A URL e o token de ingestao permanecem
 em CloudConfig.local.h. O modem conserva canal, nivel e chave RF atuais.
-Configure o SSID e a senha no receptor antes de iniciar a busca de redes
-LoRa no transmissor. Os modems precisam estar no mesmo canal e modo RF.
+Configure o SSID e a senha no Access Point antes de iniciar a busca de redes
+LoRa na Station. Os modems precisam estar no mesmo canal e modo RF.

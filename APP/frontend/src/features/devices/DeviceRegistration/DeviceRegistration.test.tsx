@@ -49,12 +49,12 @@ async function connectReceiver() {
   installBridge()
   const actions = userEvent.setup()
   render(<DeviceRegistration userId={userId} />)
-  await actions.click(screen.getByRole("button", { name: /estação \(receptor\)/i }))
+  await actions.click(screen.getByRole("button", { name: "Access Point" }))
   await actions.click(screen.getByRole("button", { name: /buscar por Bluetooth/i }))
   expect(bridge.scan).toHaveBeenCalledWith("receiver")
-  emit({ type: "device", id: "tx", name: "Transmissor perto", role: "transmitter", rssi: -48 })
+  emit({ type: "device", id: "tx", name: "Station perto", role: "transmitter", rssi: -48 })
   emit({ type: "device", id: "ble-id", name: "AgroSense RX", role: "receiver", rssi: -62 })
-  expect(screen.queryByText("Transmissor perto")).not.toBeInTheDocument()
+  expect(screen.queryByText("Station perto")).not.toBeInTheDocument()
   await actions.click(screen.getByRole("button", { name: /AgroSense RX/ }))
   expect(bridge.connect).toHaveBeenCalledWith("ble-id")
   emit({ type: "connected" })
@@ -108,7 +108,7 @@ it("vincula à área apenas a estação transmissora já liberada para a conta",
   const transmitter = { ...info, role: "transmitter", node: "esp32-01", wifi_saved: false, wifi_ssid: "" }
   const actions = userEvent.setup()
   render(<DeviceRegistration userId={userId} />)
-  await actions.click(screen.getByRole("button", { name: "Transmissor" }))
+  await actions.click(screen.getByRole("button", { name: "Station" }))
   await actions.click(screen.getByRole("button", { name: /buscar por Bluetooth/i }))
   emit({ type: "device", id: "tx", name: "AgroSense TX", role: "transmitter", rssi: -48 })
   await actions.click(screen.getByRole("button", { name: /AgroSense TX/ }))
@@ -127,21 +127,21 @@ it("vincula à área apenas a estação transmissora já liberada para a conta",
   expect(cloud.eq).toHaveBeenCalledWith("node", transmitter.node)
 })
 
-it("descobre receptores reais via LoRa e envia o pareamento do transmissor apenas pelo BLE", async () => {
+it("descobre Access Points reais via LoRa e envia o pareamento da Station apenas pelo BLE", async () => {
   installBridge()
   const transmitter = { ...info, role: "transmitter", node: "esp32-01", wifi_saved: false, wifi_ssid: "", lora_supported: true }
   const actions = userEvent.setup()
   render(<DeviceRegistration userId={userId} />)
-  await actions.click(screen.getByRole("button", { name: "Transmissor" }))
+  await actions.click(screen.getByRole("button", { name: "Station" }))
   await actions.click(screen.getByRole("button", { name: /buscar por Bluetooth/i }))
   emit({ type: "device", id: "tx", name: "AgroSense TX", role: "transmitter", rssi: -48 })
   await actions.click(screen.getByRole("button", { name: /AgroSense TX/ }))
   emit({ type: "connected" })
   emit({ type: "message", payload: transmitter })
-  await actions.click(screen.getByRole("button", { name: "Buscar receptores LoRa" }))
+  await actions.click(screen.getByRole("button", { name: "Buscar Access Points LoRa" }))
   emit({ type: "message", payload: { ok: false, error: "lora_busy" } })
   expect(screen.getByRole("alert")).toHaveTextContent(/rádio LoRa está ocupado/i)
-  await actions.click(screen.getByRole("button", { name: "Buscar receptores LoRa" }))
+  await actions.click(screen.getByRole("button", { name: "Buscar Access Points LoRa" }))
   expect(bridge.send).toHaveBeenLastCalledWith(JSON.stringify({ op: "scan_lora" }))
   expect(screen.getByRole("button", { name: "Salvar no dispositivo" })).toBeDisabled()
   emit({ type: "message", payload: { ok: true, op: "scan_lora", networks: [
@@ -171,7 +171,7 @@ it("ativa uma estação pelo código da conta sem enviar o código ao rádio", a
   const code = "aabbccddeeff00112233445566778899"
   const actions = userEvent.setup()
   render(<DeviceRegistration userId={userId} />)
-  await actions.click(screen.getByRole("button", { name: "Transmissor" }))
+  await actions.click(screen.getByRole("button", { name: "Station" }))
   await actions.click(screen.getByRole("button", { name: /buscar por Bluetooth/i }))
   emit({ type: "device", id: "tx", name: "AgroSense TX", role: "transmitter", rssi: -48 })
   await actions.click(screen.getByRole("button", { name: /AgroSense TX/ }))
@@ -184,7 +184,7 @@ it("ativa uma estação pelo código da conta sem enviar o código ao rádio", a
   expect(bridge.send).toHaveBeenCalledExactlyOnceWith(JSON.stringify({ op: "info" }))
 })
 
-it("permite mudar a senha LoRa do receptor e omite campos de configuração inalterados", () => {
+it("permite mudar a senha LoRa do Access Point e omite campos de configuração inalterados", () => {
   const current: DeviceInfo = {
     ...info, role: "receiver", lora_supported: true, lora_ssid: "Rede da área", lora_receiver_id: info.device_id,
   }

@@ -150,7 +150,7 @@ export function buildSaveCommand(form: DeviceForm, current: DeviceInfo): SaveCom
     (transmitter && form.loraReceiverId !== (current.lora_receiver_id ?? ""))
   if (current.lora_supported && (loraChanged || form.loraPassword)) {
     if (!validLoraText(form.loraSsid, 1, 32)) throw new Error("Informe um SSID LoRa de 1 a 32 bytes, sem caracteres de controle.")
-    if (transmitter && !validReceiverId.test(form.loraReceiverId)) throw new Error("Selecione um receptor na busca LoRa.")
+    if (transmitter && !validReceiverId.test(form.loraReceiverId)) throw new Error("Selecione um Access Point na busca LoRa.")
     if (!validLoraText(form.loraPassword, 16, 64)) {
       throw new Error("Informe uma senha LoRa de 16 a 64 bytes, sem caracteres de controle.")
     }

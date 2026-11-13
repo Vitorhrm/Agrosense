@@ -25,8 +25,8 @@ local.properties
 **/local.properties
 *.jks
 *.keystore
-Receptor/WifiConfig.local.h
-Receptor/CloudConfig.local.h
+**/WifiConfig.local.h
+**/CloudConfig.local.h
 
 # Artefatos e ambiente virtual do futuro backend
 **/__pycache__/

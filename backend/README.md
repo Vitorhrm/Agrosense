@@ -4,11 +4,11 @@
 
 Painel publicado: https://agrosense-lab-vitor-f35a.vercel.app
 
-Recebe JSON do receptor ESP32 por HTTPS, armazena no Supabase e mostra as medições por estação. O botão **Gerar resumo** chama NVIDIA Build com o modelo configurado no servidor. O aplicativo web/Android em `../APP` consulta telemetria autorizada pelo Supabase e previsão pela API.
+Recebe JSON do Access Point ESP32 por HTTPS, armazena no Supabase e mostra as medições por estação. O botão **Gerar resumo** chama NVIDIA Build com o modelo configurado no servidor. O aplicativo web/Android em `../APP` consulta telemetria autorizada pelo Supabase e previsão pela API.
 
 ## Fluxo e organização
 
-Estação e sensores → LoRa → receptor (classifica RSSI) → HTTPS → API Vercel → Supabase. O navegador consulta a API com sessão autenticada; a NVIDIA só é chamada quando o usuário solicita um resumo.
+Estação e sensores → LoRa → Access Point (classifica RSSI) → HTTPS → API Vercel → Supabase. O navegador consulta a API com sessão autenticada; a NVIDIA só é chamada quando o usuário solicita um resumo.
 
 - `api/index.js`: entrada da Function Vercel.
 - `lib/`: validação, autenticação, banco e chamada da IA.
@@ -33,7 +33,7 @@ Na Vercel, publique esta pasta como raiz do projeto, framework **Other**, saída
 | `SUPABASE_SECRET_KEY` | Chave secreta Supabase, somente no servidor |
 | `NVIDIA_API_KEY` | Chave NVIDIA Build, somente no servidor |
 | `NVIDIA_MODEL` | `nvidia/nemotron-3.5-bolt-e4b` |
-| `INGEST_TOKEN` | Token aleatório de pelo menos 32 caracteres, compartilhado apenas com o receptor |
+| `INGEST_TOKEN` | Token aleatório de pelo menos 32 caracteres, compartilhado apenas com o Access Point |
 | `DASHBOARD_PASSWORD` | Senha do painel, pelo menos 16 caracteres |
 | `SESSION_SECRET` | Segredo aleatório de pelo menos 32 caracteres para assinar sessões |
 
@@ -48,16 +48,16 @@ Use o tipo **Secret** para credenciais. A configuração inicial está em **Prod
 
 Também é possível trocar `NVIDIA_MODEL` e `DASHBOARD_PASSWORD`. Ao mudar a senha, troque `SESSION_SECRET` para invalidar todas as sessões anteriores. Cada sessão dura 24 horas.
 
-## Configurar o receptor
+## Configurar o Access Point
 
-1. Abra `../Receptor/Receptor.ino` no Arduino IDE.
+1. Abra `../AccessPoint/AccessPoint.ino` no Arduino IDE.
 2. Copie `WifiConfig.example.h` para `WifiConfig.local.h` e preencha `WIFI_SSID` e `WIFI_PASSWORD` com uma rede de **2,4 GHz**.
 3. Copie `CloudConfig.example.h` para `CloudConfig.local.h`; configure a URL terminada em `/api/readings` e o mesmo `INGEST_TOKEN` da Vercel. O token já foi preenchido na configuração local inicial.
-4. Grave no receptor (COM5 na montagem atual). Monitor Serial: **115200 baud**.
+4. Grave no Access Point (COM5 na montagem atual). Monitor Serial: **115200 baud**.
 
-Os arquivos `.local.h` e `.env.local` são ignorados pelo Git. Nunca coloque chave NVIDIA ou Supabase no ESP32. O transmissor não precisa de internet. Sem Wi-Fi configurado, LoRa e Serial continuam funcionando.
+Os arquivos `.local.h` e `.env.local` são ignorados pelo Git. Nunca coloque chave NVIDIA ou Supabase no ESP32. O Station não precisa de internet. Sem Wi-Fi configurado, LoRa e Serial continuam funcionando.
 
-O receptor sincroniza a hora por NTP e valida certificados HTTPS usando as autoridades do core ESP32. A fila em RAM guarda 12 coletas, além da coleta em processamento. Quando cheia, novas coletas ficam apenas no Serial. Um reinício perde a fila. Há até três tentativas por coleta, com o mesmo UUID; erros permanentes 4xx são descartados. Não há histórico offline em flash. Uma conexão Wi-Fi não comprova acesso à internet: a confirmação é a mensagem **Nuvem: coleta entregue.**
+O Access Point sincroniza a hora por NTP e valida certificados HTTPS usando as autoridades do core ESP32. A fila em RAM guarda 12 coletas, além da coleta em processamento. Quando cheia, novas coletas ficam apenas no Serial. Um reinício perde a fila. Há até três tentativas por coleta, com o mesmo UUID; erros permanentes 4xx são descartados. Não há histórico offline em flash. Uma conexão Wi-Fi não comprova acesso à internet: a confirmação é a mensagem **Nuvem: coleta entregue.**
 
 ## API
 
@@ -77,7 +77,7 @@ Exemplo ilustrativo de ingestão, sem representar coleta real:
 {"v":1,"node":"station1","seq":2,"uptime_ms":27932,"temp_c":23.62,"air_rh_pct":66.38,"pressure_hpa":900.78,"soil_raw":3282,"soil_enabled":true,"signal":"Muito próximo","event_id":"850bd287-d82c-4318-9df3-cec621ddceba"}
 ```
 
-O receptor gera `event_id` UUID v4 e o preserva nas retentativas. Novas coletas retornam 201; duplicatas retornam 200. A data exibida é a de recebimento no servidor, não a de aquisição no campo. `seq` e `uptime_ms` não são identificadores globais.
+O Access Point gera `event_id` UUID v4 e o preserva nas retentativas. Novas coletas retornam 201; duplicatas retornam 200. A data exibida é a de recebimento no servidor, não a de aquisição no campo. `seq` e `uptime_ms` não são identificadores globais.
 
 ## Banco, IA e limites
 
@@ -85,13 +85,13 @@ As tabelas `agro_readings`, `agro_summaries` e `agro_summary_limits` usam RLS e 
 
 A IA usa estatísticas das últimas 120 coletas da estação selecionada, com intervalo mínimo de um minuto entre solicitações. Não há chamada automática a cada coleta de dez segundos. Erros da NVIDIA aparecem no painel sem inventar um resumo substituto. Não há limpeza automática do histórico; planeje retenção e quotas antes de uso prolongado.
 
-`soil_raw` é ADC de 0 a 4095, **não percentual de umidade**. Sem calibração, não permite afirmar solo seco/molhado ou decidir irrigação. O sinal é a categoria RSSI do receptor, não Wi-Fi, SNR ou distância. O painel marca coleta antiga após 60 segundos sem atualização; ajuste se mudar o intervalo do transmissor.
+`soil_raw` é ADC de 0 a 4095, **não percentual de umidade**. Sem calibração, não permite afirmar solo seco/molhado ou decidir irrigação. O sinal é a categoria RSSI do Access Point, não Wi-Fi, SNR ou distância. O painel marca coleta antiga após 60 segundos sem atualização; ajuste se mudar o intervalo da Station.
 
 O Lab tem senha própria para diagnóstico. O aplicativo usa contas individuais e políticas de isolamento por conta. A limitação de tráfego pode ser aplicada no firewall. O protótipo não aciona bombas ou válvulas.
 
 ## Validação realizada em 05/11/2026
 
-Cinco testes automatizados passaram. Firmware do receptor compilado e gravado na COM5 com o core ESP32 3.3.12. Conexão ao Wi-Fi confirmada; coletas reais de station1 chegaram por LoRa, foram enviadas por HTTPS e apareceram no Supabase e no gráfico. A chamada NVIDIA com Nemotron retornou resumo com sucesso. Os registros artificiais de teste foram removidos; o painel acompanha as coletas reais.
+Cinco testes automatizados passaram. Firmware do Access Point compilado e gravado na COM5 com o core ESP32 3.3.12. Conexão ao Wi-Fi confirmada; coletas reais de station1 chegaram por LoRa, foram enviadas por HTTPS e apareceram no Supabase e no gráfico. A chamada NVIDIA com Nemotron retornou resumo com sucesso. Os registros artificiais de teste foram removidos; o painel acompanha as coletas reais.
 
 ## Banco e aplicativo em um ambiente novo
 
@@ -105,9 +105,9 @@ Cinco testes automatizados passaram. Firmware do receptor compilado e gravado na
    values ('station1', sha256(convert_to('<codigo-hexadecimal>', 'UTF8')), now() + interval '30 days');
    ```
 
-   Entregue o código ao dono da estação por um canal privado. O usuário entra no aplicativo, conecta o transmissor por Bluetooth e ativa a estação na própria conta.
+   Entregue o código ao dono da estação por um canal privado. O usuário entra no aplicativo, conecta a Station por Bluetooth e ativa a estação na própria conta.
 
-5. Em **Áreas e culturas**, cadastre a área e associe `station1`. No receptor, configure a URL HTTPS da nova API e o mesmo `INGEST_TOKEN`, usando os arquivos locais ignorados pelo Git. Em **Telemetria**, verifique o horário e o identificador da primeira coleta.
+5. Em **Áreas e culturas**, cadastre a área e associe `station1`. No Access Point, configure a URL HTTPS da nova API e o mesmo `INGEST_TOKEN`, usando os arquivos locais ignorados pelo Git. Em **Telemetria**, verifique o horário e o identificador da primeira coleta.
 
 A previsão usa `GET /api/forecast?lat=...&lon=...` e retorna sete dias por coordenada. As coordenadas enviadas ao provedor são arredondadas a três casas decimais. A rota mantém cache de até 15 minutos. Confira as condições de uso antes de adaptar para um ambiente comercial. [Documentação Open-Meteo](https://open-meteo.com/en/docs) · [Termos do serviço](https://open-meteo.com/en/terms).
 

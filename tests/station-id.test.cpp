@@ -1,4 +1,4 @@
-// Compile with Transmissor and Receptor as the include path, one sketch at a time.
+// Compile with Station and Access Point as the include path, one sketch at a time.
 #include "StationId.h"
 
 static_assert(isValidStationId("station1", 8), "Default station");

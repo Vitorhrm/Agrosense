@@ -134,13 +134,13 @@ export function DeviceEditor({ info, userId, saving, scanningLora, loraNetworks,
                     <p className="device-lora-note">Rede selecionada: <strong>{form.loraSsid}</strong> · {form.loraReceiverId}</p>
                   )}
                   <Button variant="secondary" icon={RadioTower} full onClick={() => { setError(""); onScanLora() }}>
-                    Buscar receptores LoRa
+                    Buscar Access Points LoRa
                   </Button>
-                  {scanningLora && <p className="device-progress" role="status">Buscando receptores pelo rádio do transmissor…</p>}
-                  {loraNetworks?.length === 0 && <p className="device-progress" role="status">Nenhum receptor respondeu à busca.</p>}
+                  {scanningLora && <p className="device-progress" role="status">Buscando Access Points pelo rádio da Station…</p>}
+                  {loraNetworks?.length === 0 && <p className="device-progress" role="status">Nenhum Access Point respondeu à busca.</p>}
                   {Boolean(loraNetworks?.length) && (
                     <fieldset className="device-lora-networks">
-                      <legend>Receptores encontrados</legend>
+                      <legend>Access Points encontrados</legend>
                       {loraNetworks?.map(network => (
                         <label key={network.receiver_id + ":" + network.ssid}>
                           <input type="radio" name={loraGroupId}

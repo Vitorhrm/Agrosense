@@ -25,8 +25,8 @@ export function requireDashboard(request, env) {
   if (!validSession(token, env.SESSION_SECRET)) throw new AppError(401, 'Entre no painel para continuar.');
 }
 export function requireIngest(request, env) {
-  if (!env.INGEST_TOKEN || env.INGEST_TOKEN.length < 32) throw new AppError(503, 'Token do receptor ainda não configurado.');
-  if (!equalSecret(request.headers.get('authorization')?.replace(/^Bearer /, ''), env.INGEST_TOKEN)) throw new AppError(401, 'Receptor não autorizado.');
+  if (!env.INGEST_TOKEN || env.INGEST_TOKEN.length < 32) throw new AppError(503, 'Token do Access Point ainda não configurado.');
+  if (!equalSecret(request.headers.get('authorization')?.replace(/^Bearer /, ''), env.INGEST_TOKEN)) throw new AppError(401, 'Access Point não autorizado.');
 }
 export function requireSameOrigin(request) {
   const origin = request.headers.get('origin');
