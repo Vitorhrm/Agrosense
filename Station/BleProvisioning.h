@@ -13,7 +13,7 @@
 #include "LoraProvisioning.h"
 #include "ProvisioningSettings.h"
 
-// Mantenha as copias em Station e Access Point iguais para abrir cada sketch separadamente.
+// Provisionamento da Station, sem inicializar Wi-Fi.
 class BleProvisioning : private BLEServerCallbacks, private BLECharacteristicCallbacks {
  public:
   explicit BleProvisioning(RadioLink& radio) : lora_(radio) {}
@@ -91,9 +91,10 @@ class BleProvisioning : private BLEServerCallbacks, private BLECharacteristicCal
     advertising_->setAdvertisementData(advertisement);
     advertising_->setScanResponseData(scanResponse);
     advertising_->setScanResponse(true);
-    openedAt_ = millis();
+    needsSetup_.store(!settings_.lora.enabled());
+    openedAt_.store(millis());
     advertising_->start();
-    Serial.printf("Configuracao Bluetooth por 5 min. PIN deste boot: %06lu\n",
+    Serial.printf("Configuracao Bluetooth. PIN deste boot: %06lu\n",
                   static_cast<unsigned long>(pin));
   }
 
@@ -163,12 +164,13 @@ class BleProvisioning : private BLEServerCallbacks, private BLECharacteristicCal
   std::atomic<bool> closed_{false};
   bool configurationSaved_ = false;
   uint32_t savedSession_ = 0;
+  std::atomic<bool> needsSetup_{true};
   bool storageReady_ = false;
   bool receiver_ = false;
   bool radioReady_ = false;
   const char* node_ = "";
   char deviceId_[13]{};
-  uint32_t openedAt_ = 0;
+  std::atomic<uint32_t> openedAt_{0};
   uint32_t lastChunkAt_ = 0;
   char frame_[512]{};
   size_t frameSize_ = 0;
@@ -185,7 +187,8 @@ class BleProvisioning : private BLEServerCallbacks, private BLECharacteristicCal
   }
 
   bool withinWindow() const {
-    return !closed_.load() && static_cast<uint32_t>(millis() - openedAt_) < WINDOW_MS;
+    if (closed_.load()) return false;
+    return needsSetup_.load() || static_cast<uint32_t>(millis() - openedAt_.load()) < WINDOW_MS;
   }
 
   void clearFrame() {
@@ -296,12 +299,14 @@ class BleProvisioning : private BLEServerCallbacks, private BLECharacteristicCal
       return;
     }
     if (operation != "save") return sendError("invalid_op");
+    openedAt_.store(millis());
     ProvisioningSettings candidate = settings_;
     if (!copyField(command["name"], candidate.name)) return sendError("invalid_name");
     const char* error = applyWifiFields(command, candidate);
     if (error) return sendError(error);
     const char* loraError = applyLoraFields(command, candidate);
     if (loraError) return sendError(loraError);
+    if (!receiver_ && !candidate.lora.enabled()) return sendError("lora_ssid_required");
     if (!receiver_ && memcmp(&settings_.lora, &candidate.lora, sizeof(candidate.lora)) != 0) {
       radioSession_ = responseSession_;
       if (!lora_.pair(candidate.lora)) return sendError("lora_send_failed");
@@ -330,6 +335,8 @@ class BleProvisioning : private BLEServerCallbacks, private BLECharacteristicCal
     sendInfo("save", wifiChanged);
     configurationSaved_ = true;
     savedSession_ = responseSession_;
+    openedAt_.store(millis());
+    needsSetup_.store(false);
   }
 
   const char* applyLoraFields(const JsonDocument& command, ProvisioningSettings& candidate) {

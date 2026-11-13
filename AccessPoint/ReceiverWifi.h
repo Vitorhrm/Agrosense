@@ -20,6 +20,7 @@ class ReceiverWifi {
     enabled_ = wifi_.ssid[0] != '\0';
     wasConnected_ = false;
     if (!enabled_) {
+      WiFi.mode(WIFI_OFF);
       Serial.println("Wi-Fi nao configurado. Configure por Bluetooth ou WifiConfig.local.h.");
       return;
     }
@@ -51,7 +52,7 @@ class ReceiverWifi {
   }
 
   // Disponivel para o futuro envio HTTPS; conexao ao roteador nao garante acesso a internet.
-  bool isConnected() const { return enabled_ && WiFi.status() == WL_CONNECTED; }
+  bool isConnected() const { return enabled_ && WiFi.status() == WL_CONNECTED && WiFi.localIP() != IPAddress(0, 0, 0, 0); }
 
  private:
   // Solicita conexao e devolve o controle imediatamente, sem aguardar DHCP.

@@ -198,3 +198,19 @@ it("permite mudar a senha LoRa do Access Point e omite campos de configuração 
     op: "save", name: current.name, lora_ssid: "Rede da área", lora_password: "senha-segura-1234",
   })
 })
+
+it("lista redes do Access Point e mantém o Bluetooth após falha de conexão", async () => {
+  const actions = await connectReceiver()
+  await actions.click(screen.getByRole("button", { name: "Buscar redes Wi-Fi" }))
+  expect(bridge.send).toHaveBeenLastCalledWith(JSON.stringify({ op: "scan_wifi" }))
+  emit({ type: "message", payload: { ok: true, op: "scan_wifi", networks: [{ ssid: "Fazenda", rssi: -42, open: false }] } })
+  await actions.click(screen.getByRole("button", { name: /Fazenda/ }))
+  expect(screen.getByLabelText("Rede Wi-Fi (SSID)")).toHaveValue("Fazenda")
+  await actions.type(screen.getByLabelText("Senha da rede Wi-Fi"), "senha-teste")
+  await actions.click(screen.getByRole("button", { name: "Salvar no dispositivo" }))
+  const disconnects = bridge.disconnect.mock.calls.length
+  emit({ type: "message", payload: { ok: false, error: "wifi_connection_failed" } })
+  expect(await screen.findByRole("alert")).toHaveTextContent(/não conectou ao Wi-Fi/)
+  expect(bridge.disconnect).toHaveBeenCalledTimes(disconnects)
+  expect(cloud.upsert).not.toHaveBeenCalled()
+})

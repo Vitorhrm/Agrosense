@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react"
-import { readDeviceInfo, readLoraNetworks, type LoraNetwork, type BleBridge, type BleDevice, type BleEvent, type DeviceInfo, type DeviceRole } from "./provisioning.ble"
+import { readDeviceInfo, readLoraNetworks, readWifiNetworks, type WifiNetwork, type LoraNetwork, type BleBridge, type BleDevice, type BleEvent, type DeviceInfo, type DeviceRole } from "./provisioning.ble"
 import { saveDeviceMetadata, type SavedDevice } from "./provisioning.cloud"
 
-type Step = "choose" | "scan" | "scanning" | "connect" | "read" | "edit" | "lora-scan" | "save" | "cloud" | "partial" | "done"
+type Step = "choose" | "scan" | "scanning" | "connect" | "read" | "edit" | "lora-scan" | "wifi-scan" | "save" | "cloud" | "partial" | "done"
 
 type ProvisioningState = {
   step: Step
@@ -10,15 +10,18 @@ type ProvisioningState = {
   devices: BleDevice[]
   searched: boolean
   loraNetworks: LoraNetwork[] | null
+  wifiNetworks: WifiNetwork[] | null
   info?: DeviceInfo
   saved?: SavedDevice
   error?: string
 }
 
-const initialState: ProvisioningState = { step: "choose", devices: [], searched: false, loraNetworks: null }
-const waitMs: Partial<Record<Step, number>> = { scanning: 15000, connect: 25000, read: 12000, "lora-scan": 12000, save: 35000 }
+const initialState: ProvisioningState = { step: "choose", devices: [], searched: false, loraNetworks: null, wifiNetworks: null }
+const waitMs: Partial<Record<Step, number>> = { scanning: 15000, connect: 25000, read: 12000, "lora-scan": 12000, "wifi-scan": 23000, save: 35000 }
 
-const loraErrors = new Map([
+const deviceErrors = new Map([
+  ["wifi_connection_failed", "O Access Point não conectou ao Wi-Fi. Confira a senha e o sinal e tente novamente."],
+  ["wifi_ssid_required", "Selecione uma rede Wi-Fi ou digite o SSID."],
   ["lora_unavailable", "Rádio LoRa indisponível. Confira a conexão do módulo e tente novamente."],
   ["lora_busy", "O rádio LoRa está ocupado. Aguarde e tente novamente."],
   ["lora_pair_timeout", "O Access Point não confirmou o pareamento. Confira se está ligado, se a rede selecionada é a correta e se a senha corresponde à do Access Point."],
@@ -79,6 +82,12 @@ export function useDeviceProvisioning(bridge: BleBridge | undefined, userId: str
     bridge.send(JSON.stringify({ op: "scan_lora" }))
   }
 
+  function scanWifi() {
+    if (!bridge || current.current.step !== "edit" || current.current.role !== "receiver") return
+    update({ step: "wifi-scan", wifiNetworks: null, error: undefined })
+    bridge.send(JSON.stringify({ op: "scan_wifi" }))
+  }
+
   function save(json: string, association: Pick<SavedDevice, "areaId" | "updateStationArea">) {
     if (!bridge || current.current.step !== "edit") return
     pendingArea.current = association
@@ -125,7 +134,11 @@ export function useDeviceProvisioning(bridge: BleBridge | undefined, userId: str
       } else if (detail.type === "message" && step === "lora-scan" && detail.payload && (!detail.payload.op || detail.payload.op === "scan_lora")) {
         const networks = detail.payload.ok ? readLoraNetworks(detail.payload.networks) : null
         if (networks) update({ step: "edit", loraNetworks: networks })
-        else update({ step: "edit", error: loraErrors.get(detail.payload.error ?? "") ?? "O Station não conseguiu concluir a busca LoRa. Tente novamente." })
+        else update({ step: "edit", error: deviceErrors.get(detail.payload.error ?? "") ?? "A Station não conseguiu concluir a busca LoRa. Tente novamente." })
+      } else if (detail.type === "message" && step === "wifi-scan" && detail.payload && (!detail.payload.op || detail.payload.op === "scan_wifi")) {
+        const networks = detail.payload.ok ? readWifiNetworks(detail.payload.networks) : null
+        if (networks) update({ step: "edit", wifiNetworks: networks })
+        else update({ step: "edit", error: "Não foi possível buscar as redes Wi-Fi. Tente novamente ou digite o SSID." })
       } else if (detail.type === "message" && role && (step === "read" || step === "save")) {
         const response = detail.payload
         if (!response || (response.op && response.op !== (step === "read" ? "info" : "save"))) return
@@ -133,7 +146,7 @@ export function useDeviceProvisioning(bridge: BleBridge | undefined, userId: str
           if (step === "read") recover("O dispositivo não respondeu com uma configuração válida.")
           else {
             pendingArea.current = null
-            update({ step: "edit", error: loraErrors.get(response.error ?? "") ?? "O dispositivo recusou a configuração. Confira os dados e tente novamente." })
+            update({ step: "edit", error: deviceErrors.get(response.error ?? "") ?? "O dispositivo recusou a configuração. Confira os dados e tente novamente." })
           }
           return
         }
@@ -149,9 +162,9 @@ export function useDeviceProvisioning(bridge: BleBridge | undefined, userId: str
           void saveCloud(saved)
           bridge?.disconnect()
         }
-      } else if (detail.type === "error" && ["scanning", "connect", "read", "edit", "lora-scan", "save"].includes(step)) {
+      } else if (detail.type === "error" && ["scanning", "connect", "read", "edit", "lora-scan", "wifi-scan", "save"].includes(step)) {
         recover(detail.message)
-      } else if (detail.type === "disconnected" && ["connect", "read", "edit", "lora-scan", "save"].includes(step)) {
+      } else if (detail.type === "disconnected" && ["connect", "read", "edit", "lora-scan", "wifi-scan", "save"].includes(step)) {
         recover(step === "save"
           ? "O Bluetooth caiu antes da confirmação. Reconecte para conferir a configuração gravada."
           : "O dispositivo desconectou. Faça a busca e conecte novamente.")
@@ -167,8 +180,12 @@ export function useDeviceProvisioning(bridge: BleBridge | undefined, userId: str
     if (!delay) return
     const timeout = window.setTimeout(() => {
       if (current.current.step !== state.step) return
+      if (state.step === "wifi-scan") {
+        recover("O Access Point não respondeu à busca Wi-Fi. Reconecte por Bluetooth.")
+        return
+      }
       if (state.step === "lora-scan") {
-        update({ step: "edit", error: "O Station não retornou a busca LoRa a tempo. Tente novamente." })
+        update({ step: "edit", error: "A Station não retornou a busca LoRa a tempo. Tente novamente." })
         return
       }
       recover(state.step === "save"
@@ -179,7 +196,7 @@ export function useDeviceProvisioning(bridge: BleBridge | undefined, userId: str
   }, [state.step, bridge])
 
   return {
-    state, scan, scanLora, connect, save,
+    state, scan, scanLora, scanWifi, connect, save,
     choose: (role: DeviceRole) => reset(role),
     reset,
     retryCloud: () => {

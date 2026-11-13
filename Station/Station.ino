@@ -184,7 +184,7 @@ void setup() {
   LoraAuth::encode(random, sizeof(random), bootId);
 
   // Despertar normal nao inicializa BLE. Wi-Fi nao e usado na Station.
-  if (timerWake) {
+  if (timerWake && provisioning.loraNetwork().enabled()) {
     collectAndSend();
     sleepStation();
     return;

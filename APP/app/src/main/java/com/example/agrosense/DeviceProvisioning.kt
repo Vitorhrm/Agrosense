@@ -300,7 +300,7 @@ class DeviceProvisioning(
             return
         }
         val operation = runCatching { JSONObject(json).optString("op") }.getOrNull()
-        if (operation !in setOf("info", "save", "scan_lora")) return
+        if (operation !in setOf("info", "save", "scan_lora", "scan_wifi")) return
         awaitingReply = true
         // Keep each write within the default ATT payload, even without MTU negotiation.
         for (offset in bytes.indices step 20) writes.add(bytes.copyOfRange(offset, minOf(offset + 20, bytes.size)))

@@ -15,7 +15,7 @@ RadioLink radio(loraSerial); // Transporte que separa JSON do byte binario de RS
 bool radioReady = false; // Evita interpretar bytes sem configuracao RSSI confirmada.
 ReceiverWifi receiverWifi; // Gerencia a conexao ao roteador sem esperar no loop LoRa.
 CloudUploader cloudUploader; // Envia coletas validadas em uma tarefa separada.
-BleProvisioning provisioning(radio);
+BleProvisioning provisioning(radio, receiverWifi);
 
 // Aplica exatamente os limites pedidos, sem media, SNR ou percentual de entrega.
 const char* classifySignal(int rssiDbm) {
@@ -105,7 +105,7 @@ void sendCollectionAck(const char* receipt, const ProvisionedLora& network) {
 void setup() {
   Serial.begin(115200);
   provisioning.load("AgroSense-AccessPoint", WIFI_SSID, WIFI_PASSWORD);
-  receiverWifi.begin(provisioning.initialWifi());
+  if (provisioning.loraNetwork().enabled()) receiverWifi.begin(provisioning.initialWifi());
   cloudUploader.begin(); // Token e URL ficam em CloudConfig.local.h, separado das chaves da IA.
   radioReady = radio.begin(LORA_RX_PIN, LORA_TX_PIN, LORA_BAUD_RATE, true);
   Serial.println(radioReady ? "Access Point pronto. RSSI classificado por station. Serial: 115200."
@@ -136,8 +136,6 @@ void diagnoseModem() {
 
 // Cada mensagem tem seu RSSI e identificador; nao mistura valores entre stations.
 void loop() {
-  ProvisionedWifi updatedWifi;
-  if (provisioning.takeWifiChange(updatedWifi)) receiverWifi.begin(updatedWifi);
   receiverWifi.update(); // Reconecta mesmo quando o radio esta em diagnostico.
   provisioning.setWifiConnected(receiverWifi.isConnected());
   provisioning.update();

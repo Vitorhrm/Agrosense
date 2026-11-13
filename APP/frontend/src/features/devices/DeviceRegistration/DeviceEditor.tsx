@@ -1,18 +1,21 @@
 import { useEffect, useId, useState, type FormEvent } from "react"
 import { ChevronDown, RadioTower } from "lucide-react"
 import { Button } from "../../../components/Button/Button"
-import { buildSaveCommand, type DeviceForm, type DeviceInfo, type LoraNetwork } from "../provisioning.ble"
+import { buildSaveCommand, type DeviceForm, type DeviceInfo, type LoraNetwork, type WifiNetwork } from "../provisioning.ble"
 import { activateStation, loadDeviceCloudContext, type DeviceCloudContext, type SavedDevice } from "../provisioning.cloud"
 
 type Association = Pick<SavedDevice, "areaId" | "updateStationArea">
 
-export function DeviceEditor({ info, userId, saving, scanningLora, loraNetworks, onScanLora, onSave, onBack }: {
+export function DeviceEditor({ info, userId, saving, scanningLora, loraNetworks, onScanLora, scanningWifi, wifiNetworks, onScanWifi, onSave, onBack }: {
   info: DeviceInfo
   userId: string
   saving: boolean
   scanningLora: boolean
   loraNetworks: LoraNetwork[] | null
   onScanLora: () => void
+  scanningWifi: boolean
+  wifiNetworks: WifiNetwork[] | null
+  onScanWifi: () => void
   onSave: (json: string, association: Association) => void
   onBack: () => void
 }) {
@@ -53,7 +56,7 @@ export function DeviceEditor({ info, userId, saving, scanningLora, loraNetworks,
   }
 
   async function activate() {
-    if (!info.node || activating || saving || scanningLora) return
+    if (!info.node || activating || saving || scanningLora || scanningWifi) return
     const normalized = code.trim().toLowerCase()
     setError("")
     if (!/^[a-f0-9]{32}$/.test(normalized)) {
@@ -105,6 +108,20 @@ export function DeviceEditor({ info, userId, saving, scanningLora, loraNetworks,
             <p className="device-wifi-status" role="status">
               {info.wifi_connected ? "Wi-Fi conectado." : info.wifi_saved ? "Rede Wi-Fi salva, sem conexão confirmada." : "Nenhuma rede Wi-Fi salva."}
             </p>
+            <Button type="button" variant="secondary" onClick={onScanWifi} disabled={scanningWifi}>
+              Buscar redes Wi-Fi
+            </Button>
+            {scanningWifi && <p role="status">Buscando redes próximas…</p>}
+            {wifiNetworks?.length === 0 && <p>Nenhuma rede encontrada. Você pode digitar o SSID.</p>}
+            {!!wifiNetworks?.length && <div className="device-results" aria-label="Redes Wi-Fi encontradas">
+              {wifiNetworks.map(network => (
+                <button type="button" key={network.ssid} onClick={() => setForm(previous => ({
+                  ...previous, wifiSsid: network.ssid, wifiPassword: "", openWifi: network.open,
+                }))}>
+                  <span><strong>{network.ssid}</strong><small>{network.rssi} dBm · {network.open ? "Aberta" : "Protegida"}</small></span>
+                </button>
+              ))}
+            </div>}
             <label className="field">
               <span>Rede Wi-Fi (SSID)</span>
               <div><input value={form.wifiSsid} onChange={event => setField("wifiSsid", event.target.value)} maxLength={32} /></div>

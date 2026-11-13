@@ -12,7 +12,7 @@ const roleNames: Record<DeviceRole, string> = {
 
 export function DeviceRegistration({ userId }: { userId: string }) {
   const bridge = getBleBridge()
-  const { state, choose, connect, reset, retryCloud, save, scan, scanLora } = useDeviceProvisioning(bridge, userId)
+  const { state, choose, connect, reset, retryCloud, save, scan, scanLora, scanWifi } = useDeviceProvisioning(bridge, userId)
   const { step, role, info, devices, searched, error, saved } = state
 
   return (
@@ -76,8 +76,8 @@ export function DeviceRegistration({ userId }: { userId: string }) {
             </div>
           )}
 
-          {info && (step === "edit" || step === "lora-scan" || step === "save") && (
-            <DeviceEditor info={info} userId={userId} saving={step === "save"} scanningLora={step === "lora-scan"} loraNetworks={state.loraNetworks} onScanLora={scanLora} onSave={save} onBack={() => reset(role)} />
+          {info && (step === "edit" || step === "lora-scan" || step === "wifi-scan" || step === "save") && (
+            <DeviceEditor info={info} userId={userId} saving={step === "save"} scanningLora={step === "lora-scan"} loraNetworks={state.loraNetworks} onScanLora={scanLora} scanningWifi={step === "wifi-scan"} wifiNetworks={state.wifiNetworks} onScanWifi={scanWifi} onSave={save} onBack={() => reset(role)} />
           )}
 
           {step === "cloud" && <p className="device-progress" role="status">Configuração confirmada pelo ESP32. Salvando o cadastro na sua conta…</p>}
@@ -90,7 +90,7 @@ export function DeviceRegistration({ userId }: { userId: string }) {
                 <h3>Configuração e cadastro salvos</h3>
                 <p>{saved.info.name}</p>
                 {saved.info.wifi_saved && !saved.info.wifi_connected && (
-                  <p>Rede Wi-Fi gravada. Reconecte por Bluetooth para verificar a conexão.</p>
+                  <p>Este firmware não confirmou a conexão Wi-Fi. Reconecte por Bluetooth para verificar.</p>
                 )}
               </div>
               <Button full onClick={() => reset(role)}>Configurar ou editar outro dispositivo</Button>

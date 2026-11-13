@@ -24,7 +24,7 @@ export type DeviceInfo = {
 
 type BleMessage = Partial<DeviceInfo> & {
   ok: boolean
-  op?: "info" | "save" | "scan_lora"
+  op?: "info" | "save" | "scan_lora" | "scan_wifi"
   networks?: unknown
   error?: string
 }
@@ -159,4 +159,14 @@ export function buildSaveCommand(form: DeviceForm, current: DeviceInfo): SaveCom
     command.lora_password = form.loraPassword
   }
   return command
+}
+
+export type WifiNetwork = { ssid: string; rssi: number; open: boolean }
+
+export function readWifiNetworks(value: unknown): WifiNetwork[] | null {
+  if (!Array.isArray(value)) return null
+  return value.filter((item): item is WifiNetwork =>
+    item && typeof item.ssid === "string" && byteLength(item.ssid) <= 32 &&
+    item.ssid.length > 0 && Number.isFinite(item.rssi) && typeof item.open === "boolean"
+  ).sort((a, b) => b.rssi - a.rssi)
 }

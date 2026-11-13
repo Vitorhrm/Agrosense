@@ -11,12 +11,13 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/queue.h>
 #include "LoraProvisioning.h"
+#include "ReceiverWifi.h"
 #include "ProvisioningSettings.h"
 
-// Mantenha as copias em Station e Access Point iguais para abrir cada sketch separadamente.
+// Provisionamento do Access Point, incluindo busca e validação do Wi-Fi.
 class BleProvisioning : private BLEServerCallbacks, private BLECharacteristicCallbacks {
  public:
-  explicit BleProvisioning(RadioLink& radio) : lora_(radio) {}
+  explicit BleProvisioning(RadioLink& radio, ReceiverWifi& wifi) : lora_(radio), wifi_(wifi) {}
   // Chame antes de iniciar BLE. Uma configuracao BLE substitui o fallback compilado.
   void load(const char* defaultName, const char* wifiSsid = "", const char* wifiPassword = "") {
     strlcpy(settings_.name, defaultName, sizeof(settings_.name));
@@ -43,7 +44,7 @@ class BleProvisioning : private BLEServerCallbacks, private BLECharacteristicCal
     receiver_ = receiver;
     node_ = node;
     radioReady_ = radioReady;
-    if (receiver_) wifiQueue_ = xQueueCreate(1, sizeof(ProvisionedWifi));
+
     commandQueue_ = xQueueCreate(2, sizeof(Command));
     if (!commandQueue_) {
       Serial.println("Configuracao Bluetooth indisponivel: sem memoria para a fila.");
@@ -91,15 +92,23 @@ class BleProvisioning : private BLEServerCallbacks, private BLECharacteristicCal
     advertising_->setAdvertisementData(advertisement);
     advertising_->setScanResponseData(scanResponse);
     advertising_->setScanResponse(true);
-    openedAt_ = millis();
+    needsSetup_.store(!settings_.lora.enabled());
+    openedAt_.store(millis());
     advertising_->start();
-    Serial.printf("Configuracao Bluetooth por 5 min. PIN deste boot: %06lu\n",
+    Serial.printf("Configuracao Bluetooth. PIN deste boot: %06lu\n",
                   static_cast<unsigned long>(pin));
   }
 
   void update() {
     serviceRadio();
     if (!advertising_) return;
+    serviceWifi();
+    if (configurationFinished()) {
+      advertising_->stop();
+      advertising_ = nullptr;
+      BLEDevice::deinit(false);
+      return;
+    }
     if (!withinWindow()) {
       if (!closed_.exchange(true)) advertising_->stop();
     } else if (advertiseAgain_.exchange(false)) {
@@ -110,7 +119,7 @@ class BleProvisioning : private BLEServerCallbacks, private BLECharacteristicCal
     responseSession_ = command.session;
     if (command.error) sendError(command.error);
     else if (!withinWindow()) sendError("window_closed");
-    else if (lora_.busy()) sendError("lora_busy");
+    else if (wifiOperation_ != WifiOperation::idle || lora_.busy()) sendError("lora_busy");
     else handleFrame(command);
   }
 
@@ -123,10 +132,6 @@ class BleProvisioning : private BLEServerCallbacks, private BLECharacteristicCal
   bool configurationFinished() const {
     return advertising_ == nullptr || !withinWindow() ||
         (configurationSaved_ && session_.load() != savedSession_);
-  }
-
-  bool takeWifiChange(ProvisionedWifi& wifi) {
-    return wifiQueue_ && xQueueReceive(wifiQueue_, &wifi, 0) == pdTRUE;
   }
 
   void setWifiConnected(bool connected) { wifiConnected_.store(connected); }
@@ -151,9 +156,13 @@ class BleProvisioning : private BLEServerCallbacks, private BLECharacteristicCal
   ProvisioningSettings settings_{};
   ProvisioningSettings pendingSettings_{};
   LoraProvisioning lora_;
+  ReceiverWifi& wifi_;
+  enum class WifiOperation { idle, scan, connect };
+  WifiOperation wifiOperation_ = WifiOperation::idle;
+  uint32_t wifiStartedAt_ = 0;
+  uint32_t wifiSession_ = 0;
   BLECharacteristic* response_ = nullptr;
   BLEAdvertising* advertising_ = nullptr;
-  QueueHandle_t wifiQueue_ = nullptr;
   QueueHandle_t commandQueue_ = nullptr;
   std::atomic<uint32_t> session_{0};
   uint32_t responseSession_ = 0;
@@ -163,12 +172,13 @@ class BleProvisioning : private BLEServerCallbacks, private BLECharacteristicCal
   std::atomic<bool> closed_{false};
   bool configurationSaved_ = false;
   uint32_t savedSession_ = 0;
+  std::atomic<bool> needsSetup_{true};
   bool storageReady_ = false;
   bool receiver_ = false;
   bool radioReady_ = false;
   const char* node_ = "";
   char deviceId_[13]{};
-  uint32_t openedAt_ = 0;
+  std::atomic<uint32_t> openedAt_{0};
   uint32_t lastChunkAt_ = 0;
   char frame_[512]{};
   size_t frameSize_ = 0;
@@ -185,7 +195,8 @@ class BleProvisioning : private BLEServerCallbacks, private BLECharacteristicCal
   }
 
   bool withinWindow() const {
-    return !closed_.load() && static_cast<uint32_t>(millis() - openedAt_) < WINDOW_MS;
+    if (closed_.load()) return false;
+    return needsSetup_.load() || static_cast<uint32_t>(millis() - openedAt_.load()) < WINDOW_MS;
   }
 
   void clearFrame() {
@@ -288,6 +299,13 @@ class BleProvisioning : private BLEServerCallbacks, private BLECharacteristicCal
     }
     const JsonVariantConst operation = command["op"];
     if (operation == "info") return sendInfo("info");
+    if (operation == "scan_wifi") {
+      WiFi.persistent(false);
+      WiFi.mode(WIFI_STA);
+      if (WiFi.scanNetworks(true) == WIFI_SCAN_FAILED) return sendError("wifi_scan_failed");
+      startWifiOperation(WifiOperation::scan);
+      return;
+    }
     if (operation == "scan_lora") {
       if (receiver_) return sendError("lora_scan_transmitter_only");
       if (!radioReady_) return sendError("lora_unavailable");
@@ -296,6 +314,7 @@ class BleProvisioning : private BLEServerCallbacks, private BLECharacteristicCal
       return;
     }
     if (operation != "save") return sendError("invalid_op");
+    configurationSaved_ = false;
     ProvisioningSettings candidate = settings_;
     if (!copyField(command["name"], candidate.name)) return sendError("invalid_name");
     const char* error = applyWifiFields(command, candidate);
@@ -308,7 +327,70 @@ class BleProvisioning : private BLEServerCallbacks, private BLECharacteristicCal
       pendingSettings_ = candidate;
       return;
     }
+    if (!candidate.lora.enabled()) return sendError("lora_ssid_required");
+    if (!candidate.wifi.ssid[0]) return sendError("wifi_ssid_required");
+    if (!wifi_.isConnected() || memcmp(&settings_.wifi, &candidate.wifi, sizeof(candidate.wifi)) != 0) {
+      pendingSettings_ = candidate;
+      wifi_.begin(candidate.wifi);
+      startWifiOperation(WifiOperation::connect);
+      return;
+    }
     commitSettings(candidate);
+  }
+
+  void startWifiOperation(WifiOperation operation) {
+    openedAt_.store(millis());
+    wifiOperation_ = operation;
+    wifiSession_ = responseSession_;
+    wifiStartedAt_ = millis();
+  }
+
+  void serviceWifi() {
+    if (wifiOperation_ == WifiOperation::idle) return;
+    const bool cancelled = wifiSession_ != session_.load() || !withinWindow();
+    const bool expired = static_cast<uint32_t>(millis() - wifiStartedAt_) >= 18000;
+    responseSession_ = wifiSession_;
+    if (wifiOperation_ == WifiOperation::scan) {
+      const int count = WiFi.scanComplete();
+      if (!cancelled && !expired && count == WIFI_SCAN_RUNNING) return;
+      wifiOperation_ = WifiOperation::idle;
+      if (!cancelled && !expired && count >= 0) {
+        JsonDocument reply;
+        reply["ok"] = true;
+        reply["op"] = "scan_wifi";
+        JsonArray networks = reply["networks"].to<JsonArray>();
+        for (int index = 0; index < count && networks.size() < 4; ++index) {
+          const String ssid = WiFi.SSID(index);
+          if (ssid.isEmpty() || ssid.length() > 32 ||
+              !validProvisioningText(ssid.c_str(), ssid.length())) continue;
+          bool duplicate = false;
+          for (JsonObject network : networks) {
+            if (network["ssid"] == ssid) { duplicate = true; break; }
+          }
+          if (duplicate) continue;
+          JsonObject network = networks.add<JsonObject>();
+          network["ssid"] = ssid;
+          network["rssi"] = WiFi.RSSI(index);
+          network["open"] = WiFi.encryptionType(index) == WIFI_AUTH_OPEN;
+        }
+        sendReply(reply);
+      } else if (!cancelled) sendError("wifi_scan_failed");
+      WiFi.scanDelete();
+      return;
+    }
+    const bool connected = wifi_.isConnected() && WiFi.SSID() == pendingSettings_.wifi.ssid &&
+        WiFi.localIP() != IPAddress(0, 0, 0, 0);
+    if (!cancelled && !expired && !connected) return;
+    wifiOperation_ = WifiOperation::idle;
+    if (!cancelled && !expired && connected) {
+      wifiConnected_.store(true);
+      commitSettings(pendingSettings_);
+      if (!configurationSaved_) wifi_.begin(settings_.wifi);
+    } else {
+      wifi_.begin(settings_.wifi);
+      if (!cancelled) sendError("wifi_connection_failed");
+    }
+    pendingSettings_ = {};
   }
 
   void commitSettings(const ProvisioningSettings& candidate) {
@@ -318,18 +400,13 @@ class BleProvisioning : private BLEServerCallbacks, private BLECharacteristicCal
     if (!storageReady_ || preferences_.putBytes(SETTINGS_KEY, &stored, sizeof(stored)) != sizeof(stored)) {
       return sendError("storage_failed");
     }
-    const bool wifiChanged = memcmp(&settings_.wifi, &candidate.wifi, sizeof(candidate.wifi)) != 0;
-    if (receiver_ && memcmp(&settings_.lora, &candidate.lora, sizeof(candidate.lora)) != 0) {
-      lora_.clearOutgoing();
-    }
+    if (memcmp(&settings_.lora, &candidate.lora, sizeof(candidate.lora)) != 0) lora_.clearOutgoing();
     settings_ = candidate;
-    if (wifiChanged) {
-      wifiConnected_.store(false);
-      xQueueOverwrite(wifiQueue_, &settings_.wifi);
-    }
-    sendInfo("save", wifiChanged);
+    sendInfo("save");
     configurationSaved_ = true;
     savedSession_ = responseSession_;
+    openedAt_.store(millis());
+    needsSetup_.store(false);
   }
 
   const char* applyLoraFields(const JsonDocument& command, ProvisioningSettings& candidate) {
@@ -365,7 +442,7 @@ class BleProvisioning : private BLEServerCallbacks, private BLECharacteristicCal
       return emptyOrMissing(ssid) && emptyOrMissing(password) ? nullptr : "wifi_receiver_only";
     }
     if (ssid.isUnbound()) return password.isUnbound() ? nullptr : "wifi_ssid_required";
-    if (!wifiQueue_) return "wifi_unavailable";
+
     if (!copyField(ssid, candidate.wifi.ssid)) return "invalid_wifi_ssid";
     if (password.isUnbound()) {
       if (strcmp(candidate.wifi.ssid, settings_.wifi.ssid) != 0) return "wifi_password_required";
@@ -377,7 +454,7 @@ class BleProvisioning : private BLEServerCallbacks, private BLECharacteristicCal
     return nullptr;
   }
 
-  void sendInfo(const char* operation, bool wifiChangePending = false) {
+  void sendInfo(const char* operation) {
     JsonDocument reply;
     reply["ok"] = true;
     reply["op"] = operation;
@@ -390,7 +467,7 @@ class BleProvisioning : private BLEServerCallbacks, private BLECharacteristicCal
     reply["lora_supported"] = radioReady_;
     reply["wifi_ssid"] = settings_.wifi.ssid;
     reply["wifi_saved"] = settings_.wifiSaved;
-    reply["wifi_connected"] = !wifiChangePending && wifiConnected_.load();
+    reply["wifi_connected"] = wifiConnected_.load();
     sendReply(reply);
   }
 
