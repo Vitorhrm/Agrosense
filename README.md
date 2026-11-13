@@ -19,7 +19,7 @@ Acesse a [versão web](https://agrosense-app.vercel.app/agro/) ou abra o projeto
 1. O Station mede temperatura e umidade do ar com AHT20, pressão local com BMP280 e o sinal analógico do sensor capacitivo de solo.
 2. O Access Point recebe o JSON por LoRa, classifica o sinal e envia a leitura por HTTPS à API. O banco grava a hora de recebimento.
 3. No aplicativo web ou Android, faça login, abra **Áreas e culturas** e cadastre uma área. No Android, vincule a Station no local de instalação e permita a localização do celular. A primeira Station vinculada fornece as coordenadas da previsão. Áreas sem Station podem usar coordenadas manuais.
-4. Abra **Telemetria** para ver as últimas coletas da conta, **Áreas** para editar os talhões e **Clima** para consultar a previsão pelas coordenadas salvas. O painel Lab serve para diagnosticar ingestão e, se configurado, resumir as coletas com NVIDIA.
+4. Abra **Telemetria** para ver as últimas coletas da conta, **Áreas e culturas** para editar os talhões e **Clima → Previsão das áreas cadastradas** para consultar a previsão pelas coordenadas salvas. O painel Lab serve para diagnosticar ingestão e, se configurado, resumir as coletas com NVIDIA.
 
 Os parâmetros da cultura são definidos por área: cultura, estágio, limites inferior e superior de solo com unidade, volume e janela de chuva, Kc, fonte técnica e condições de aplicação. Em Áreas, selecione uma estação vinculada para comparar seu último índice relativo com a faixa cadastrada. A tela usa o horário de recebimento e sinaliza leituras recebidas há mais de 35 minutos. Uma amostra que ficou na fila pode ter sido coletada antes. A comparação volumétrica exige outro tipo de leitura. A previsão meteorológica é exibida à parte e as regras de recomendação de irrigação ainda exigem validação agronômica.
 
@@ -350,7 +350,7 @@ Cada JSON associa o sinal ao seu `node`; o RSSI de uma estação não é reutili
 
 Configure primeiro o Access Point pelo Bluetooth do app Android. Escolha o SSID e a senha da rede LoRa e salve. Em seguida, conecte à Station pelo Bluetooth, busque as redes LoRa, escolha o SSID anunciado pelo Access Point e digite a senha. O Station só confirma o vínculo depois de validar a resposta do Access Point. Com a rede configurada, o Access Point aceita coletas autenticadas pela senha compartilhada. Um identificador estável permite ao backend descartar retransmissões da mesma coleta.
 
-O nome da rede é do AgroSense. A busca ocorre no canal LoRa configurado nos modems DX-LR32, que precisam usar os mesmos parâmetros RF. O PIN Bluetooth, a senha do Wi-Fi, a senha LoRa e o código de ativação da estação têm funções distintas.
+O nome da rede é do AgroSense. A busca ocorre no canal LoRa configurado nos modems DX-LR32, que precisam usar os mesmos parâmetros RF. O Bluetooth usa criptografia sem PIN. A senha do Wi-Fi, a senha LoRa e o código de ativação da estação têm funções distintas.
 
 Para autorizar a telemetria pela primeira vez, informe no cadastro da Station o código de ativação de uso único da estação. Depois disso, selecione a área na mesma tela. Consulte o [passo a passo Android](APP/README.md).
 
@@ -436,7 +436,7 @@ O modem real responde às consultas AT com o valor consultado, sem `OK` adiciona
 - [x] Integrar login, áreas, dispositivos e leituras ao Supabase e a previsão à API do backend.
 - [x] Implementar e validar o encaminhamento Wi-Fi/HTTPS das coletas pelo Access Point.
 - [x] Vincular dispositivos e áreas a usuários com políticas de acesso por conta.
-- [x] Substituir dados demonstrativos da navegação por dados reais ou estados informativos.
+- [ ] Integrar dados reais a todos os cartões das telas originais.
 - [x] Preparar o provisionamento BLE Android e o cadastro de dispositivos por conta.
 - [ ] Validar em bancada o BLE, a descoberta por SSID e o pareamento LoRa.
 - [x] Integrar previsão meteorológica real por área.

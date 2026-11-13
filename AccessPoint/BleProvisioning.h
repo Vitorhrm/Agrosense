@@ -7,7 +7,6 @@
 #include <BLESecurity.h>
 #include <Preferences.h>
 #include <atomic>
-#include <esp_random.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/queue.h>
 #include "LoraProvisioning.h"
@@ -61,25 +60,23 @@ class BleProvisioning : private BLEServerCallbacks, private BLECharacteristicCal
       Serial.println("Configuracao Bluetooth indisponivel. A telemetria continua ativa.");
       return;
     }
-    BLESecurity::setAuthenticationMode(ESP_LE_AUTH_REQ_SC_MITM_BOND);
-    BLESecurity::setCapability(ESP_IO_CAP_OUT);
-    BLESecurity::setEncryptionLevel(ESP_BLE_SEC_ENCRYPT_MITM);
+    BLESecurity::setAuthenticationMode(ESP_LE_AUTH_REQ_SC_ONLY);
+    BLESecurity::setCapability(ESP_IO_CAP_NONE);
+    BLESecurity::setEncryptionLevel(ESP_BLE_SEC_ENCRYPT_NO_MITM);
     BLESecurity::setInitEncryptionKey();
     BLESecurity::setRespEncryptionKey();
-    const uint32_t pin = 100000 + esp_random() % 900000;
-    BLESecurity::setPassKey(true, pin);
 
     BLEServer* server = BLEDevice::createServer();
     server->setCallbacks(this);
     BLEService* service = server->createService(SERVICE_UUID);
     BLECharacteristic* request = service->createCharacteristic(REQUEST_UUID, BLECharacteristic::PROPERTY_WRITE);
-    request->setAccessPermissions(ESP_GATT_PERM_WRITE_ENC_MITM);
+    request->setAccessPermissions(ESP_GATT_PERM_WRITE_ENCRYPTED);
     request->setCallbacks(this);
     response_ = service->createCharacteristic(RESPONSE_UUID,
         BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY);
-    response_->setAccessPermissions(ESP_GATT_PERM_READ_ENC_MITM);
+    response_->setAccessPermissions(ESP_GATT_PERM_READ_ENCRYPTED);
     auto* subscription = new BLE2902();
-    subscription->setAccessPermissions(ESP_GATT_PERM_READ_ENC_MITM | ESP_GATT_PERM_WRITE_ENC_MITM);
+    subscription->setAccessPermissions(ESP_GATT_PERM_READ_ENCRYPTED | ESP_GATT_PERM_WRITE_ENCRYPTED);
     response_->addDescriptor(subscription);
     service->start();
 
@@ -95,8 +92,7 @@ class BleProvisioning : private BLEServerCallbacks, private BLECharacteristicCal
     needsSetup_.store(!settings_.lora.enabled());
     openedAt_.store(millis());
     advertising_->start();
-    Serial.printf("Configuracao Bluetooth. PIN deste boot: %06lu\n",
-                  static_cast<unsigned long>(pin));
+    Serial.println("Configuracao Bluetooth disponivel.");
   }
 
   void update() {

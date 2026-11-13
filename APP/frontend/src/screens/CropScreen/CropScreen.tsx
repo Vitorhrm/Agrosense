@@ -229,7 +229,7 @@ export function CropScreen({ go, mode = "manage" }: { go: (screen: Screen) => vo
     }
   }
 
-  if (mode === "weather") return <AppShell screen="weather" go={go}>
+  if (mode === "weather") return <AppShell screen="live-weather" go={go}>
     <TopBar title="Clima" subtitle="Previsão por área" />
     <section className="page crop-management">
       {loading ? <p role="status">Carregando áreas…</p> : error ? <p role="alert">{error}</p> : <>

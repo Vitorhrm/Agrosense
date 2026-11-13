@@ -13,11 +13,12 @@ export function BottomNav({
     label: string
     icon: IconType
     screen: Screen
+    badge?: string
   }[] = [
     { label: "Início", icon: Home, screen: "home" },
     { label: "Áreas", icon: Map, screen: "areas" },
     { label: "Clima", icon: CloudRain, screen: "weather" },
-    { label: "Alertas", icon: Bell, screen: "alerts" },
+    { label: "Alertas", icon: Bell, screen: "alerts", badge: "2" },
     { label: "Perfil", icon: User, screen: "profile" },
   ]
   return (
@@ -29,7 +30,7 @@ export function BottomNav({
             ["area", "station", "new-area", "new-station", "crop"].includes(
               screen,
             )) ||
-          (item.screen === "weather" && screen === "weather-detail")
+          (item.screen === "weather" && (screen === "weather-detail" || screen === "live-weather"))
         const Icon = item.icon
         return (
           <button
@@ -39,6 +40,7 @@ export function BottomNav({
           >
             <span className="nav-icon">
               <Icon size={21} strokeWidth={active ? 2.5 : 2} />
+              {item.badge && <i>{item.badge}</i>}
             </span>
             <span>{item.label}</span>
           </button>

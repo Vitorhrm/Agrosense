@@ -215,8 +215,7 @@ Coletas reais da station1 foram recebidas pela API e persistidas no Supabase,
 com a confirmacao Nuvem: coleta entregue e exibicao no painel publicado.
 
 CONFIGURACAO NO ANDROID
-Reinicie o ESP32 para anunciar AgroSense-AccessPoint por cinco minutos. Use o PIN
-exibido na serial USB a 115200. O app configura nome e Wi-Fi e permite
+Reinicie o ESP32 para anunciar AgroSense-AccessPoint por cinco minutos. Conecte pelo app sem PIN. O app configura nome e Wi-Fi e permite
 cadastrar o gateway como geral ou associar seu registro a uma area.
 A senha Wi-Fi e gravada localmente. A URL e o token de ingestao permanecem
 em CloudConfig.local.h. O modem conserva canal, nivel e chave RF atuais.

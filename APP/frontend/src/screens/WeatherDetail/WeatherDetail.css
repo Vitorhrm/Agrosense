@@ -1,0 +1,72 @@
+/* Estilos de WeatherDetail. Padrões compartilhados estão em styles/shared.css. */
+.weather-hero { padding: 17px; border-radius: 21px; color: white; background: linear-gradient(145deg, #156a94, #44a1c8); box-shadow: 0 12px 30px rgba(22,106,148,.2); }
+
+.weather-hero-top { display: flex; justify-content: space-between; align-items: center; font-size: 9px; font-weight: 700; letter-spacing: .08em; color: #d5eff9; }
+
+.weather-hero-temp { display: flex; align-items: center; gap: 18px; margin: 7px 0 14px; }
+
+.weather-hero-temp > strong { font-size: 58px; letter-spacing: -.08em; }
+
+.weather-hero-temp > div { padding-left: 17px; border-left: 1px solid rgba(255,255,255,.3); }
+
+.weather-hero-temp span, .weather-hero-temp b { display: block; font-size: 10px; }
+
+.weather-hero-temp b { margin-top: 5px; }
+
+.weather-details { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+
+.weather-details span { display: flex; align-items: center; gap: 6px; padding: 9px; border-radius: 10px; background: rgba(255,255,255,.1); font-size: 9px; }
+
+.weather-details b { margin-left: auto; }
+
+.location-confirm { margin: 11px 0; display: flex; align-items: center; gap: 9px; padding: 11px; border-radius: 14px; color: var(--forest-700); background: var(--leaf-100); }
+
+.location-confirm > div { flex: 1; }
+
+.location-confirm strong, .location-confirm span { display: block; }
+
+.location-confirm strong { font-size: 10px; }
+
+.location-confirm span { color: #56816d; font-size: 8.5px; margin-top: 2px; }
+
+.rain-focus { padding: 15px; border-radius: 18px; background: white; border: 1px solid var(--line); }
+
+.rain-focus-title { display: flex; align-items: center; gap: 10px; }
+
+.rain-focus-title > span { width: 39px; height: 39px; display: grid; place-items: center; color: var(--sky-700); background: var(--sky-100); border-radius: 12px; }
+
+.rain-focus-title small { color: var(--sky-700); font-size: 8px; font-weight: 800; letter-spacing: .1em; }
+
+.rain-focus-title strong { display: block; font-size: 14px; margin-top: 2px; }
+
+.rain-countdown { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; margin-top: 13px; border-top: 1px solid var(--line); padding-top: 12px; }
+
+.rain-countdown > div { text-align: center; border-right: 1px solid var(--line); }
+
+.rain-countdown > div:last-child { border: 0; }
+
+.rain-countdown strong, .rain-countdown span { display: block; }
+
+.rain-countdown strong { font-size: 11px; }
+
+.rain-countdown span { color: var(--muted); font-size: 8px; margin-top: 2px; }
+
+.white-card { padding: 12px; border-radius: 17px; background: white; border: 1px solid var(--line); }
+
+.daily-list { border-radius: 17px; background: white; border: 1px solid var(--line); overflow: hidden; }
+
+.daily-list > div { display: grid; grid-template-columns: 38px 23px 1fr auto auto; align-items: center; gap: 7px; padding: 12px; border-bottom: 1px solid #edf2ef; }
+
+.daily-list > div:last-child { border: 0; }
+
+.daily-list strong, .daily-list b { font-size: 10px; }
+
+.daily-list span { color: var(--muted); font-size: 9px; }
+
+.daily-list small { display: flex; gap: 3px; color: var(--sky-700); font-size: 8px; }
+
+.et-card { margin-top: 12px; padding: 14px; border-radius: 16px; display: flex; align-items: center; justify-content: space-between; background: var(--violet-100); color: var(--violet-600); }
+
+.et-card > div { display: flex; align-items: center; gap: 8px; font-size: 10px; }
+
+.et-card strong { font-size: 12px; }

@@ -16,6 +16,8 @@ export function AppShell({
 }) {
   return (
     <div className="app-shell">
+      {["home", "areas", "area", "station", "weather", "weather-detail", "alerts", "history"].includes(screen) &&
+        <aside className="demo-notice">Dados agrícolas de demonstração</aside>}
       <main className={noNav ? "app-content no-nav" : "app-content"}>
         {children}
       </main>

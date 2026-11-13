@@ -14,10 +14,6 @@ import android.bluetooth.le.ScanCallback
 import android.bluetooth.le.ScanFilter
 import android.bluetooth.le.ScanResult
 import android.bluetooth.le.ScanSettings
-import android.content.BroadcastReceiver
-import android.content.Context
-import android.content.Intent
-import android.content.IntentFilter
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
@@ -48,7 +44,7 @@ class DeviceProvisioning(
     private var pendingRole: String? = null
     private var scan: ScanCallback? = null
     private var gatt: BluetoothGatt? = null
-    private var pairing: BluetoothDevice? = null
+
     private var writer: BluetoothGattCharacteristic? = null
     private var writing = false
     private var awaitingReply = false
@@ -65,34 +61,6 @@ class DeviceProvisioning(
         if (requested != null && result.values.all { it }) startScan(requested)
         else error("Permita o acesso ao Bluetooth para buscar o dispositivo.")
     }
-    private val bonds = object : BroadcastReceiver() {
-        override fun onReceive(context: Context, intent: Intent) {
-            val device = if (Build.VERSION.SDK_INT >= 33) {
-                intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE, BluetoothDevice::class.java)
-            } else {
-                @Suppress("DEPRECATION")
-                intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE)
-            }
-            if (device == null || pairing?.address != device.address) return
-            when (intent.getIntExtra(BluetoothDevice.EXTRA_BOND_STATE, BluetoothDevice.BOND_NONE)) {
-                BluetoothDevice.BOND_BONDED -> {
-                    if (device.bondState != BluetoothDevice.BOND_BONDED) return
-                    pairing = null
-                    open(device)
-                }
-                BluetoothDevice.BOND_NONE -> {
-                    pairing = null
-                    handler.removeCallbacks(timeout)
-                    error("O pareamento Bluetooth foi cancelado ou falhou.")
-                }
-            }
-        }
-    }
-
-    init {
-        ContextCompat.registerReceiver(activity, bonds, IntentFilter(BluetoothDevice.ACTION_BOND_STATE_CHANGED), ContextCompat.RECEIVER_EXPORTED)
-    }
-
     private fun event(type: String) = JSONObject().put("type", type)
     private fun error(message: String) = emit(event("error").put("message", message))
     private fun armTimeout(ms: Long = 12_000) {
@@ -182,19 +150,7 @@ class DeviceProvisioning(
             return
         }
         disconnect(announce = false)
-        if (device.bondState == BluetoothDevice.BOND_BONDED) open(device)
-        else {
-            pairing = device
-            armTimeout(60_000)
-            if (device.bondState != BluetoothDevice.BOND_BONDING && !device.createBond()) {
-                pairing = null
-                handler.removeCallbacks(timeout)
-                error("Não foi possível iniciar o pareamento Bluetooth.")
-            }
-        }
-    }
-
-    private fun open(device: BluetoothDevice) {
+        // A conexão GATT negocia a criptografia quando o ESP32 exige acesso protegido.
         armTimeout()
         gatt = device.connectGatt(activity, false, callbacks, BluetoothDevice.TRANSPORT_LE)
         if (gatt == null) {
@@ -255,7 +211,7 @@ class DeviceProvisioning(
                 if (gatt !== connection || characteristic.uuid != writeId) return@post
                 writing = false
                 if (status == BluetoothGatt.GATT_SUCCESS) writeNext()
-                else fail("O ESP32 recusou a escrita. Confira o pareamento e tente novamente.")
+                else fail("O ESP32 recusou a escrita. Reconecte e tente novamente.")
             }
         }
 
@@ -335,7 +291,6 @@ class DeviceProvisioning(
         handler.removeCallbacks(timeout)
         val old = gatt
         gatt = null
-        pairing = null
         writer = null
         writing = false
         awaitingReply = false
@@ -351,7 +306,6 @@ class DeviceProvisioning(
     fun close() {
         closed = true
         disconnect(announce = false)
-        activity.unregisterReceiver(bonds)
         handler.removeCallbacksAndMessages(null)
     }
 }

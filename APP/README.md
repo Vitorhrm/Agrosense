@@ -29,15 +29,15 @@ A autenticação e as regras do frontend ficam em TypeScript. O Kotlin está res
 
 A autenticação implementa cadastro com nome e sobrenome, login por e-mail e senha, restauração e renovação de sessão, logout no dispositivo atual e proteção das telas privadas. Quando o Supabase exige confirmação de e-mail, o cadastro apresenta a orientação correspondente e aguarda uma sessão válida.
 
-Na página inicial, **Telemetria** mostra as coletas das estações autorizadas e **Áreas e culturas** cadastra áreas e parâmetros no banco. Ao cadastrar uma Station vinculada no Android, autorize a captura da localização do celular no local de instalação. **Clima** usa somente a primeira Station vinculada. Se ela não tiver localização, reabra o cadastro e salve novamente no local. Áreas sem Station podem usar coordenadas manuais. **Alertas** indica que a geração automática está em desenvolvimento.
+Na página inicial, **Telemetria** mostra as coletas das estações autorizadas e **Áreas e culturas** cadastra áreas e parâmetros no banco. Ao cadastrar uma Station vinculada no Android, autorize a captura da localização do celular no local de instalação. Em **Clima**, abra **Previsão das áreas cadastradas**. A previsão usa somente a primeira Station vinculada. Se ela não tiver localização, reabra o cadastro e salve novamente no local. Áreas sem Station podem usar coordenadas manuais. As telas originais identificam os dados de demonstração.
 
 Recuperação de senha, login social, integração com sensores e persistência dos dados agrícolas ainda não estão implementados.
 
 ## Configurar dispositivos no Android
 
 1. Entre na conta e abra **Configurar dispositivos**.
-2. Reinicie o ESP32. Ele anuncia `AgroSense-Station` ou `AgroSense-AccessPoint` até concluir o primeiro cadastro. Em reinícios de dispositivos já configurados, a janela é de cinco minutos. Leia o PIN na serial USB a 115200 baud.
-3. Escolha o tipo, permita a busca Bluetooth e selecione o dispositivo. Digite o PIN no diálogo do Android.
+2. Reinicie o ESP32. Ele anuncia `AgroSense-Station` ou `AgroSense-AccessPoint` até concluir o primeiro cadastro. Em reinícios de dispositivos já configurados, a janela é de cinco minutos.
+3. Escolha o tipo, permita a busca Bluetooth e selecione o dispositivo. A conexão usa criptografia Bluetooth sem solicitar PIN.
 4. Comece pelo Access Point. Defina o nome da rede LoRa (SSID) e a senha. O Access Point pode ficar geral ou vinculado a uma área. Toque em **Buscar redes Wi-Fi**, selecione a rede e digite a senha. Se a conexão falhar, o app avisa e mantém o Bluetooth disponível para corrigir. Se conectar e receber IP, o Access Point salva as configurações e encerra o Bluetooth após a confirmação.
 5. Conecte à Station. Toque em **Buscar redes LoRa**, escolha a rede do Access Point e digite a senha LoRa. Se for o primeiro cadastro, use o código de ativação da estação para liberar a telemetria na sua conta e escolha a área.
 6. Aguarde a confirmação do ESP32. Se o cadastro no banco falhar, repita apenas essa etapa pelo app. Reconecte para conferir o estado da rede. Para editar depois, reinicie o ESP32 e refaça a conexão.

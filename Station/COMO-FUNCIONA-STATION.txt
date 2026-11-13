@@ -199,7 +199,7 @@ Guia completo de configuracao: backend/README.md.
 
 CONFIGURACAO NO ANDROID
 Reinicie o ESP32 e abra Configurar dispositivos no app. O anuncio AgroSense-Station
-fica ativo por cinco minutos e o PIN aparece na serial USB a 115200.
+fica ativo por cinco minutos após reiniciar uma Station já cadastrada. O Bluetooth conecta sem PIN.
 O nome exibido e o vinculo com a area podem ser alterados pelo app. NODE_ID
 continua sendo a identidade da coleta no radio e no banco.
 Configure as referencias ADC medidas em SoilCalibrationConfig.h para enviar

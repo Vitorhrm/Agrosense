@@ -1,9 +1,7 @@
 import { act, render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { afterEach, beforeEach, expect, it, vi } from "vitest"
+import { beforeEach, expect, it, vi } from "vitest"
 import type { AuthUser } from "../features/auth/auth.types"
-const cloud = vi.hoisted(() => ({ from: vi.fn() }))
-vi.mock("../lib/supabase", () => ({ getSupabase: () => cloud }))
 const mocks = vi.hoisted(() => ({ subscribe: vi.fn(), login: vi.fn(), signup: vi.fn(), logout: vi.fn() }))
 vi.mock("../features/auth/auth.service", () => ({ authService: mocks }))
 import App from "./App"
@@ -64,54 +62,53 @@ it("restaura sessão e faz logout no perfil", async () => {
   await waitFor(() => expect(window.location.hash).toBe("#login"))
 })
 
-const area = { id: "area-1", name: "Talhão cadastrado", crop: "Tomate", latitude: null as number | null, longitude: null as number | null }
 
-function signedInAreas(areas = [area], station: { node: string; latitude: number | null; longitude: number | null } | null = null) {
+it("mantém a área demonstrativa e abre a configuração Android sem vincular dados fictícios", async () => {
   mocks.subscribe.mockImplementation(callback => { callback(user); return vi.fn() })
-  cloud.from.mockImplementation(table => ({
-    select: () => ({
-      order: () => ({ abortSignal: async () => ({ data: table === "agro_areas" ? areas : [], error: null }) }),
-      eq: () => ({ abortSignal: () => ({ maybeSingle: async () => ({ data: station, error: null }) }) }),
-    }),
-  }))
-}
-
-afterEach(() => vi.unstubAllGlobals())
-
-it("carrega áreas da conta pelo menu principal", async () => {
-  signedInAreas()
   render(<App />)
   const actions = userEvent.setup()
   await actions.click(await screen.findByRole("button", { name: "Áreas" }))
-  expect(await screen.findByRole("textbox", { name: "Nome da área" })).toHaveValue(area.name)
-  expect(screen.getByRole("textbox", { name: "Cultura" })).toHaveValue(area.crop)
-  expect(cloud.from).toHaveBeenCalledWith("agro_areas")
+  await actions.click(screen.getByRole("button", { name: "Abrir Horta Leste" }))
+  expect(screen.getByRole("heading", { name: "Horta Leste" })).toBeInTheDocument()
+  await actions.click(screen.getByRole("button", { name: "Configurar dispositivos" }))
+  expect(screen.getByRole("region", { name: "Configuração de dispositivos" })).toBeInTheDocument()
+  expect(screen.getByText(/exige o aplicativo Android/)).toBeInTheDocument()
   expect(screen.queryByText("Horta Leste")).not.toBeInTheDocument()
+  expect(window.history.state.areaName).toBe("Horta Leste")
 })
 
-it("consulta a previsão pela primeira Station, mesmo com coordenadas manuais cadastradas", async () => {
-  signedInAreas([{ ...area, latitude: 0, longitude: 0 }], { node: "station1", latitude: -20.52, longitude: -43.69 })
-  const fetchForecast = vi.fn().mockResolvedValue({
-    ok: true,
-    json: async () => ({ fetched_at: "2026-11-12T12:00:00Z", daily: [
-      { date: "2026-11-12", temp_min_c: 17, temp_max_c: 24, precipitation_probability_pct: 80, precipitation_mm: 12 },
-    ] }),
-  })
-  vi.stubGlobal("fetch", fetchForecast)
+
+it("abre uma área pelo teclado", async () => {
+  mocks.subscribe.mockImplementation(callback => { callback(user); return vi.fn() })
+  const actions = userEvent.setup()
   render(<App />)
-  await userEvent.click(await screen.findByRole("button", { name: "Clima" }))
-  expect(await screen.findByText("17 a 24 °C")).toBeInTheDocument()
-  expect(screen.getByText("Localização: Station station1")).toBeInTheDocument()
-  expect(fetchForecast.mock.calls[0][0].pathname).toBe("/api/forecast")
-  expect(fetchForecast.mock.calls[0][0].search).toBe("?lat=-20.520&lon=-43.690")
+  await actions.click(await screen.findByRole("button", { name: "Áreas" }))
+  const card = screen.getByRole("button", { name: "Abrir Fazenda Sul" })
+  card.focus()
+  await actions.keyboard("{Enter}")
+  expect(window.history.state.areaName).toBe("Fazenda Sul")
+  expect(screen.getByRole("heading", { name: "Fazenda Sul", level: 1 })).toBeInTheDocument()
 })
 
-it("não consulta previsão sem coordenadas cadastradas", async () => {
-  signedInAreas()
-  const fetchForecast = vi.fn()
-  vi.stubGlobal("fetch", fetchForecast)
+it("abre a previsão da área escolhida e mantém o contexto no histórico", async () => {
+  mocks.subscribe.mockImplementation(callback => { callback(user); return vi.fn() })
+  const actions = userEvent.setup()
   render(<App />)
-  await userEvent.click(await screen.findByRole("button", { name: "Clima" }))
-  expect(await screen.findByText(/Cadastre as coordenadas desta área/)).toBeInTheDocument()
-  expect(fetchForecast).not.toHaveBeenCalled()
+  await actions.click(await screen.findByRole("button", { name: "Clima" }))
+  await actions.click(screen.getByRole("heading", { name: "Fazenda Sul" }))
+  expect(screen.getByRole("heading", { name: "Clima de Fazenda Sul" })).toBeInTheDocument()
+  expect(screen.getByText("31°")).toBeInTheDocument()
+  expect(window.history.state.areaName).toBe("Fazenda Sul")
+})
+
+it("abre a área do alerta de irrigação", async () => {
+  mocks.subscribe.mockImplementation(callback => { callback(user); return vi.fn() })
+  const actions = userEvent.setup()
+  render(<App />)
+  await actions.click(await screen.findByRole("button", { name: /2 alertas precisam/ }))
+  await actions.click(screen.getByRole("heading", { name: "Irrigação recomendada" }))
+  expect(screen.getByRole("heading", { name: "Fazenda Sul", level: 1 })).toBeInTheDocument()
+  expect(screen.getByText("4 online · 0 offline")).toBeInTheDocument()
+  expect(screen.getByRole("heading", { name: "IRRIGAR" })).toBeInTheDocument()
+  expect(screen.queryByText("Estação Sul")).not.toBeInTheDocument()
 })

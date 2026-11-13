@@ -1,0 +1,20 @@
+/* Estilos de HomeScreen. Padrões compartilhados estão em styles/shared.css. */
+.attention-banner { width: 100%; text-align: left; display: flex; align-items: center; gap: 11px; padding: 13px; border-radius: 16px; background: var(--red-100); border: 1px solid #f6cec9; }
+
+.attention-banner > span { width: 38px; height: 38px; display: grid; place-items: center; border-radius: 12px; color: white; background: var(--red-500); flex: none; }
+
+.attention-banner > div { flex: 1; }
+
+.attention-banner strong { color: #7c2e28; font-size: 12px; }
+
+.attention-banner p { color: #9b5751; font-size: 10.5px; margin-top: 2px; }
+
+.attention-banner > svg { color: var(--red-700); }
+
+.summary-weather { padding: 20px 2px 15px; display: flex; justify-content: space-between; gap: 12px; align-items: end; }
+
+.summary-weather > div:first-child strong { display: block; font-size: 16px; margin-top: 4px; }
+
+.mini-summary { display: flex; flex-direction: column; align-items: end; gap: 4px; color: var(--muted); font-size: 9.5px; }
+
+.mini-summary span { display: flex; align-items: center; gap: 4px; }
