@@ -4,6 +4,7 @@ import { TopBar } from "../../components/TopBar/TopBar"
 import { getSupabase } from "../../lib/supabase"
 import type { Screen } from "../../types/navigation"
 import { CropReference } from "./CropReference"
+import { AreaSoil } from "./AreaSoil"
 import "./CropScreen.css"
 
 const textFields = [
@@ -252,6 +253,8 @@ export function CropScreen({ go }: { go: (screen: Screen) => void }) {
           </div>)}
           <button type="button" onClick={() => go("telemetry")}>Ver leituras</button>
         </section>}
+        {area && <AreaSoil key={area.id} unit={area.soil_unit} min={area.soil_min} max={area.soil_max}
+          stations={stations.filter(station => station.area_id === area.id)} />}
         {area && area.latitude !== null && area.longitude !== null &&
           <AreaForecast key={area.id + ":" + area.latitude + ":" + area.longitude} latitude={area.latitude} longitude={area.longitude} />}
       </>}

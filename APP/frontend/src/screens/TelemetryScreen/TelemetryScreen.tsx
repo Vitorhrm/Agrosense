@@ -4,6 +4,7 @@ import { AppShell } from "../../components/AppShell/AppShell"
 import { Button } from "../../components/Button/Button"
 import { TopBar } from "../../components/TopBar/TopBar"
 import { getSupabase } from "../../lib/supabase"
+import { relativeSoilIndex } from "../../lib/soilIndex"
 import type { Screen } from "../../types/navigation"
 import "./TelemetryScreen.css"
 
@@ -39,21 +40,10 @@ function formatMeasurement(value: number | null, unit = "") {
   return value === null ? "—" : numberFormat.format(value) + unit
 }
 
-function validAdc(value: number | null): value is number {
-  return value !== null && Number.isInteger(value) && value >= 0 && value <= 4095
-}
-
 function soilIndex(reading: Reading, calibration: StationAccess | undefined) {
   if (reading.soil_enabled === false) return "Desativado"
-  const recorded = reading.soil_index_pct
-  if (typeof recorded === "number" && Number.isFinite(recorded) && recorded >= 0 && recorded <= 100) {
-    return formatMeasurement(recorded, "%") + " · na coleta"
-  }
-  if (!calibration || !validAdc(reading.soil_raw)) return "Sem calibração"
-  const { dry_adc, wet_adc } = calibration
-  if (!validAdc(dry_adc) || !validAdc(wet_adc) || dry_adc === wet_adc) return "Sem calibração"
-  const relative = ((reading.soil_raw - dry_adc) / (wet_adc - dry_adc)) * 100
-  return formatMeasurement(Math.max(0, Math.min(100, relative)), "%")
+  const index = relativeSoilIndex(reading, calibration)
+  return index ? formatMeasurement(index.value, "%") + (index.recorded ? " · na coleta" : "") : "Sem calibração"
 }
 
 export function TelemetryScreen({ go, userId }: { go: (screen: Screen) => void; userId: string }) {
