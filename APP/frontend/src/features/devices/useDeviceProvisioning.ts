@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react"
 import { readDeviceInfo, readLoraNetworks, readWifiNetworks, type WifiNetwork, type LoraNetwork, type BleBridge, type BleDevice, type BleEvent, type DeviceInfo, type DeviceRole } from "./provisioning.ble"
-import { saveDeviceMetadata, type SavedDevice } from "./provisioning.cloud"
+import { saveDeviceMetadata, type DeviceAssociation, type SavedDevice } from "./provisioning.cloud"
 
 type Step = "choose" | "scan" | "scanning" | "connect" | "read" | "edit" | "lora-scan" | "wifi-scan" | "save" | "cloud" | "partial" | "done"
 
@@ -36,7 +36,7 @@ const deviceErrors = new Map([
 export function useDeviceProvisioning(bridge: BleBridge | undefined, userId: string) {
   const [state, setState] = useState(initialState)
   const current = useRef(state)
-  const pendingArea = useRef<Pick<SavedDevice, "areaId" | "updateStationArea"> | null>(null)
+  const pendingArea = useRef<DeviceAssociation | null>(null)
   const active = useRef(false)
 
   function update(next: Partial<ProvisioningState>) {
@@ -88,8 +88,8 @@ export function useDeviceProvisioning(bridge: BleBridge | undefined, userId: str
     bridge.send(JSON.stringify({ op: "scan_wifi" }))
   }
 
-  function save(json: string, association: Pick<SavedDevice, "areaId" | "updateStationArea">) {
-    if (!bridge || current.current.step !== "edit") return
+  function save(json: string, association: DeviceAssociation) {
+    if (!active.current || !bridge || current.current.step !== "edit") return
     pendingArea.current = association
     update({ step: "save", error: undefined })
     bridge.send(json)

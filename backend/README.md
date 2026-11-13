@@ -111,6 +111,8 @@ Cinco testes automatizados passaram. Firmware do Access Point compilado e gravad
 
 A previsão usa `GET /api/forecast?lat=...&lon=...` e retorna sete dias por coordenada. As coordenadas enviadas ao provedor são arredondadas a três casas decimais. A rota mantém cache de até 15 minutos. Confira as condições de uso antes de adaptar para um ambiente comercial. [Documentação Open-Meteo](https://open-meteo.com/en/docs) · [Termos do serviço](https://open-meteo.com/en/terms).
 
+A view `agro_area_weather_station` respeita o acesso por conta e seleciona a Station pelo horário do vínculo com a área. Vínculos antigos sem data são priorizados e desempatados pelo identificador. Ao desvincular a primeira Station, o próximo vínculo passa a fornecer as coordenadas. O aplicativo arredonda as coordenadas antes da consulta meteorológica.
+
 ## Publicação web
 
 A produção serve o aplicativo em `/agro/`, o painel técnico em `/lab` e os endpoints em `/api/`. Execute `npm run build:web` dentro de `backend` para construir os assets web. Se a hospedagem receber apenas esta pasta, use `npm run build:web -- <SHA-do-commit>` para buscar o frontend do commit público indicado. A pasta gerada `public/agro/` é ignorada pelo Git.

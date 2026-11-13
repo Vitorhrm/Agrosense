@@ -2,9 +2,8 @@ import { useEffect, useId, useState, type FormEvent } from "react"
 import { ChevronDown, RadioTower } from "lucide-react"
 import { Button } from "../../../components/Button/Button"
 import { buildSaveCommand, type DeviceForm, type DeviceInfo, type LoraNetwork, type WifiNetwork } from "../provisioning.ble"
-import { activateStation, loadDeviceCloudContext, type DeviceCloudContext, type SavedDevice } from "../provisioning.cloud"
-
-type Association = Pick<SavedDevice, "areaId" | "updateStationArea">
+import { activateStation, loadDeviceCloudContext, type DeviceCloudContext, type DeviceAssociation } from "../provisioning.cloud"
+import { captureStationLocation } from "../stationLocation"
 
 export function DeviceEditor({ info, userId, saving, scanningLora, loraNetworks, onScanLora, scanningWifi, wifiNetworks, onScanWifi, onSave, onBack }: {
   info: DeviceInfo
@@ -16,7 +15,7 @@ export function DeviceEditor({ info, userId, saving, scanningLora, loraNetworks,
   scanningWifi: boolean
   wifiNetworks: WifiNetwork[] | null
   onScanWifi: () => void
-  onSave: (json: string, association: Association) => void
+  onSave: (json: string, association: DeviceAssociation) => void
   onBack: () => void
 }) {
   const passwordHelpId = useId()
@@ -38,6 +37,7 @@ export function DeviceEditor({ info, userId, saving, scanningLora, loraNetworks,
   const [error, setError] = useState("")
   const [code, setCode] = useState("")
   const [activating, setActivating] = useState(false)
+  const [locating, setLocating] = useState(false)
   const receiver = info.role === "receiver"
   const areaId = areaOverride ?? cloud?.areaId
   const canAssignArea = cloud && (receiver || cloud.stationGranted)
@@ -78,18 +78,27 @@ export function DeviceEditor({ info, userId, saving, scanningLora, loraNetworks,
     }
   }
 
-  function submit(event: FormEvent<HTMLFormElement>) {
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (saving || activating || scanningLora) return
+    if (saving || activating || scanningLora || locating) return
     setError("")
     try {
       const command = buildSaveCommand(form, info)
+      const updateStationArea = Boolean(!receiver && cloud?.stationGranted && areaId !== cloud.areaId)
+      let location
+      if (!receiver && canAssignArea && areaId && (updateStationArea || !cloud.stationLocated)) {
+        setLocating(true)
+        location = await captureStationLocation()
+      }
       onSave(JSON.stringify(command), {
         areaId: canAssignArea ? areaId || null : undefined,
-        updateStationArea: Boolean(!receiver && cloud?.stationGranted && areaId !== cloud.areaId),
+        updateStationArea,
+        location,
       })
     } catch (failure) {
       if (failure instanceof Error) setError(failure.message)
+    } finally {
+      setLocating(false)
     }
   }
 
@@ -98,7 +107,9 @@ export function DeviceEditor({ info, userId, saving, scanningLora, loraNetworks,
       <h3>Configuração do ESP32</h3>
       <p>Dispositivo {info.device_id}{info.node && ` · Estação ${info.node}`}</p>
       {error && <p className="inline-alert" role="alert">{error}</p>}
-      <fieldset disabled={saving || activating || scanningLora}>
+      {locating && <p role="status">Obtendo a localização do celular…</p>}
+      {!receiver && <p>A primeira Station vinculada à área fornece a localização para a previsão. Cadastre-a no local da instalação.</p>}
+      <fieldset disabled={saving || activating || scanningLora || locating}>
         <label className="field">
           <span>Nome do dispositivo</span>
           <div><input value={form.name} onChange={event => setField("name", event.target.value)} required maxLength={32} /></div>

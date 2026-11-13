@@ -66,11 +66,12 @@ it("restaura sessão e faz logout no perfil", async () => {
 
 const area = { id: "area-1", name: "Talhão cadastrado", crop: "Tomate", latitude: null as number | null, longitude: null as number | null }
 
-function signedInAreas(areas = [area]) {
+function signedInAreas(areas = [area], station: { node: string; latitude: number | null; longitude: number | null } | null = null) {
   mocks.subscribe.mockImplementation(callback => { callback(user); return vi.fn() })
   cloud.from.mockImplementation(table => ({
     select: () => ({
       order: () => ({ abortSignal: async () => ({ data: table === "agro_areas" ? areas : [], error: null }) }),
+      eq: () => ({ abortSignal: () => ({ maybeSingle: async () => ({ data: station, error: null }) }) }),
     }),
   }))
 }
@@ -88,8 +89,8 @@ it("carrega áreas da conta pelo menu principal", async () => {
   expect(screen.queryByText("Horta Leste")).not.toBeInTheDocument()
 })
 
-it("consulta a previsão pelas coordenadas da área selecionada", async () => {
-  signedInAreas([{ ...area, latitude: -20.52, longitude: -43.69 }])
+it("consulta a previsão pela primeira Station, mesmo com coordenadas manuais cadastradas", async () => {
+  signedInAreas([{ ...area, latitude: 0, longitude: 0 }], { node: "station1", latitude: -20.52, longitude: -43.69 })
   const fetchForecast = vi.fn().mockResolvedValue({
     ok: true,
     json: async () => ({ fetched_at: "2026-11-12T12:00:00Z", daily: [
@@ -100,6 +101,7 @@ it("consulta a previsão pelas coordenadas da área selecionada", async () => {
   render(<App />)
   await userEvent.click(await screen.findByRole("button", { name: "Clima" }))
   expect(await screen.findByText("17 a 24 °C")).toBeInTheDocument()
+  expect(screen.getByText("Localização: Station station1")).toBeInTheDocument()
   expect(fetchForecast.mock.calls[0][0].pathname).toBe("/api/forecast")
   expect(fetchForecast.mock.calls[0][0].search).toBe("?lat=-20.520&lon=-43.690")
 })

@@ -1,5 +1,6 @@
 import { getSupabase } from "../../lib/supabase"
 import type { DeviceInfo } from "./provisioning.ble"
+import type { StationLocation } from "./stationLocation"
 
 export type CloudArea = { id: string; name: string }
 
@@ -7,6 +8,7 @@ export type DeviceCloudContext = {
   areas: CloudArea[]
   areaId: string
   stationGranted: boolean
+  stationLocated: boolean
 }
 
 export async function loadDeviceCloudContext(userId: string, info: DeviceInfo): Promise<DeviceCloudContext> {
@@ -16,7 +18,7 @@ export async function loadDeviceCloudContext(userId: string, info: DeviceInfo): 
     client.from("agro_areas").select("id,name").order("name"),
     station
       ? info.node
-        ? client.from("agro_station_access").select("area_id").eq("user_id", userId).eq("node", info.node).maybeSingle()
+        ? client.from("agro_station_access").select("area_id,latitude").eq("user_id", userId).eq("node", info.node).maybeSingle()
         : null
       : client.from("agro_devices").select("area_id").eq("user_id", userId).eq("device_id", info.device_id).maybeSingle(),
   ])
@@ -26,18 +28,21 @@ export async function loadDeviceCloudContext(userId: string, info: DeviceInfo): 
     areas: areas.data,
     areaId: association?.data?.area_id ?? "",
     stationGranted: station && Boolean(association?.data),
+    stationLocated: station && !!association?.data && "latitude" in association.data &&
+      typeof association.data.latitude === "number",
   }
 }
 
-export type SavedDevice = { info: DeviceInfo; areaId?: string | null; updateStationArea: boolean }
+export type DeviceAssociation = { areaId?: string | null; updateStationArea: boolean; location?: StationLocation }
+export type SavedDevice = DeviceAssociation & { info: DeviceInfo }
 
 export async function saveDeviceMetadata(userId: string, saved: SavedDevice) {
-  const { info, areaId, updateStationArea } = saved
+  const { info, areaId, updateStationArea, location } = saved
   const client = getSupabase()
 
-  if (updateStationArea) {
+  if (updateStationArea || location) {
     const { data, error } = await client.from("agro_station_access")
-      .update({ area_id: areaId })
+      .update({ ...(updateStationArea && { area_id: areaId }), ...location })
       .eq("user_id", userId)
       .eq("node", info.node)
       .select("node")

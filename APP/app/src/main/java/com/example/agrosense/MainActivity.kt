@@ -1,11 +1,16 @@
 package com.example.agrosense
 
+import android.Manifest
 import android.annotation.SuppressLint
+import android.content.pm.PackageManager
 import android.os.Bundle
+import android.webkit.GeolocationPermissions
+import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import androidx.activity.OnBackPressedCallback
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
@@ -19,6 +24,16 @@ import androidx.webkit.WebViewFeature
 class MainActivity : AppCompatActivity() {
     private lateinit var webView: WebView
     private lateinit var provisioning: DeviceProvisioning
+    private var locationPrompt: GeolocationPermissions.Callback? = null
+    private val localOrigin = "https://appassets.androidplatform.net"
+    private val locationPermissions = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
+        locationPrompt?.invoke(localOrigin, hasLocationPermission(), false)
+        locationPrompt = null
+    }
+
+    private fun hasLocationPermission() =
+        checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
+            checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -44,6 +59,20 @@ class MainActivity : AppCompatActivity() {
             domStorageEnabled = true
             allowFileAccess = false
             allowContentAccess = false
+            setGeolocationEnabled(true)
+        }
+        // Somente o React empacotado pode solicitar localização. A WebView não memoriza a autorização.
+        webView.webChromeClient = object : WebChromeClient() {
+            override fun onGeolocationPermissionsShowPrompt(origin: String, callback: GeolocationPermissions.Callback) {
+                when {
+                    origin != localOrigin || locationPrompt != null -> callback.invoke(origin, false, false)
+                    hasLocationPermission() -> callback.invoke(origin, true, false)
+                    else -> {
+                        locationPrompt = callback
+                        locationPermissions.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
+                    }
+                }
+            }
         }
         
         WebView.setWebContentsDebuggingEnabled(BuildConfig.DEBUG)
@@ -64,10 +93,10 @@ class MainActivity : AppCompatActivity() {
                 "window.dispatchEvent(new CustomEvent('agrosense-ble',{detail:$message}))", null,
             )
         }
-        val localOrigin = setOf("https://appassets.androidplatform.net")
+        val allowedOrigins = setOf(localOrigin)
         if (WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER) &&
             WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)) {
-            WebViewCompat.addWebMessageListener(webView, "AgroSenseNativeBle", localOrigin) { _, message, _, isMainFrame, _ ->
+            WebViewCompat.addWebMessageListener(webView, "AgroSenseNativeBle", allowedOrigins) { _, message, _, isMainFrame, _ ->
                 if (isMainFrame) message.data?.let { provisioning.dispatch(it) }
             }
             WebViewCompat.addDocumentStartJavaScript(webView, """
@@ -80,7 +109,7 @@ class MainActivity : AppCompatActivity() {
                     disconnect: () => post({action:'disconnect'})
                   });
                 }
-            """.trimIndent(), localOrigin)
+            """.trimIndent(), allowedOrigins)
         }
         webView.loadUrl("https://appassets.androidplatform.net/assets/agrosense/index.html")
     }

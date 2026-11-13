@@ -29,7 +29,7 @@ A autenticação e as regras do frontend ficam em TypeScript. O Kotlin está res
 
 A autenticação implementa cadastro com nome e sobrenome, login por e-mail e senha, restauração e renovação de sessão, logout no dispositivo atual e proteção das telas privadas. Quando o Supabase exige confirmação de e-mail, o cadastro apresenta a orientação correspondente e aguarda uma sessão válida.
 
-Na página inicial, **Telemetria** mostra as coletas das estações autorizadas e **Áreas e culturas** cadastra áreas e parâmetros no banco e vincula estações. Em **Clima**, selecione uma área com coordenadas cadastradas para consultar a previsão real. **Alertas** indica que a geração automática está em desenvolvimento.
+Na página inicial, **Telemetria** mostra as coletas das estações autorizadas e **Áreas e culturas** cadastra áreas e parâmetros no banco. Ao cadastrar uma Station vinculada no Android, autorize a captura da localização do celular no local de instalação. **Clima** usa somente a primeira Station vinculada. Se ela não tiver localização, reabra o cadastro e salve novamente no local. Áreas sem Station podem usar coordenadas manuais. **Alertas** indica que a geração automática está em desenvolvimento.
 
 Recuperação de senha, login social, integração com sensores e persistência dos dados agrícolas ainda não estão implementados.
 

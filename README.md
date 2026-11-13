@@ -18,7 +18,7 @@ Acesse a [versão web](https://agrosense-app.vercel.app/agro/) ou abra o projeto
 
 1. O Station mede temperatura e umidade do ar com AHT20, pressão local com BMP280 e o sinal analógico do sensor capacitivo de solo.
 2. O Access Point recebe o JSON por LoRa, classifica o sinal e envia a leitura por HTTPS à API. O banco grava a hora de recebimento.
-3. No aplicativo web ou Android, faça login, abra **Áreas e culturas** e cadastre uma área. Informe coordenadas para consultar a previsão por área. Uma estação autorizada pode ser vinculada à área e receber as referências de calibração.
+3. No aplicativo web ou Android, faça login, abra **Áreas e culturas** e cadastre uma área. No Android, vincule a Station no local de instalação e permita a localização do celular. A primeira Station vinculada fornece as coordenadas da previsão. Áreas sem Station podem usar coordenadas manuais.
 4. Abra **Telemetria** para ver as últimas coletas da conta, **Áreas** para editar os talhões e **Clima** para consultar a previsão pelas coordenadas salvas. O painel Lab serve para diagnosticar ingestão e, se configurado, resumir as coletas com NVIDIA.
 
 Os parâmetros da cultura são definidos por área: cultura, estágio, limites inferior e superior de solo com unidade, volume e janela de chuva, Kc, fonte técnica e condições de aplicação. Em Áreas, selecione uma estação vinculada para comparar seu último índice relativo com a faixa cadastrada. A tela usa o horário de recebimento e sinaliza leituras recebidas há mais de 35 minutos. Uma amostra que ficou na fila pode ter sido coletada antes. A comparação volumétrica exige outro tipo de leitura. A previsão meteorológica é exibida à parte e as regras de recomendação de irrigação ainda exigem validação agronômica.

@@ -72,6 +72,38 @@ function AreaForecast({ latitude, longitude }: { latitude: number; longitude: nu
   </section>
 }
 
+function AreaWeather({ area }: { area: Area }) {
+  type StationLocation = { node: string; latitude: number | null; longitude: number | null }
+  const [source, setSource] = useState<{ station: StationLocation | null; error: boolean }>()
+  useEffect(() => {
+    const controller = new AbortController()
+    async function load() {
+      try {
+        // A view retorna a primeira Station vinculada, mesmo se ela ainda não tiver GPS.
+        const { data, error } = await getSupabase().from("agro_area_weather_station")
+          .select("node,latitude,longitude").eq("area_id", area.id).abortSignal(controller.signal).maybeSingle()
+        if (!controller.signal.aborted) setSource({ station: data, error: Boolean(error) })
+      } catch {
+        if (!controller.signal.aborted) setSource({ station: null, error: true })
+      }
+    }
+    void load()
+    return () => controller.abort()
+  }, [area.id])
+
+  if (!source) return <p role="status">Consultando a localização da área…</p>
+  if (source.error) return <p role="alert">Não foi possível consultar a localização da área.</p>
+  const { station } = source
+  const { latitude, longitude } = station ?? area
+  if (latitude === null || longitude === null) return <p>{station
+    ? `A Station ${station.node} ainda não tem localização. Reabra seu cadastro no Android e salve no local da instalação.`
+    : "Cadastre as coordenadas desta área para consultar a previsão."}</p>
+  return <>
+    <p>Localização: {station ? `Station ${station.node}` : "coordenadas da área"}</p>
+    <AreaForecast key={`${latitude}:${longitude}`} latitude={latitude} longitude={longitude} />
+  </>
+}
+
 export function CropScreen({ go, mode = "manage" }: { go: (screen: Screen) => void; mode?: "manage" | "weather" | "new" }) {
   const [areas, setAreas] = useState<Area[]>([])
   const [stations, setStations] = useState<Station[]>([])
@@ -206,9 +238,7 @@ export function CropScreen({ go, mode = "manage" }: { go: (screen: Screen) => vo
             {areas.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
           </select>
         </label> : <p>Cadastre uma área para consultar a previsão.</p>}
-        {area && (area.latitude !== null && area.longitude !== null
-          ? <AreaForecast key={area.id} latitude={area.latitude} longitude={area.longitude} />
-          : <p>Cadastre as coordenadas desta área para consultar a previsão.</p>)}
+        {area && <AreaWeather key={area.id} area={area} />}
         <button type="button" onClick={() => go("areas")}>Gerenciar áreas</button>
       </>}
     </section>
@@ -277,8 +307,6 @@ export function CropScreen({ go, mode = "manage" }: { go: (screen: Screen) => vo
         </section>}
         {area && <AreaSoil key={area.id} unit={area.soil_unit} min={area.soil_min} max={area.soil_max}
           stations={stations.filter(station => station.area_id === area.id)} />}
-        {area && area.latitude !== null && area.longitude !== null &&
-          <AreaForecast key={area.id + ":" + area.latitude + ":" + area.longitude} latitude={area.latitude} longitude={area.longitude} />}
       </>}
     </section>
   </AppShell>
