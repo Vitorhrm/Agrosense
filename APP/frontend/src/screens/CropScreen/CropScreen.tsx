@@ -3,6 +3,7 @@ import { AppShell } from "../../components/AppShell/AppShell"
 import { TopBar } from "../../components/TopBar/TopBar"
 import { getSupabase } from "../../lib/supabase"
 import type { Screen } from "../../types/navigation"
+import { CropReference } from "./CropReference"
 import "./CropScreen.css"
 
 const textFields = [
@@ -215,6 +216,7 @@ export function CropScreen({ go }: { go: (screen: Screen) => void }) {
               <label key={name}>{label}<input name={name} type="number" step="any" min={min} max={max} defaultValue={area?.[name] ?? ""} /></label>)}
           </fieldset>
           <h2>Parâmetros da cultura</h2>
+          <fieldset disabled={busy}><CropReference /></fieldset>
           <p>Os limites dependem do solo, da cultura e da instalação. As leituras brutas em ADC não são comparadas com estes limites.</p>
           <fieldset disabled={busy}>
             <label>Escala do solo
