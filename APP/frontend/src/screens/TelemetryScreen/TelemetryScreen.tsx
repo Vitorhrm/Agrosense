@@ -4,7 +4,7 @@ import { AppShell } from "../../components/AppShell/AppShell"
 import { Button } from "../../components/Button/Button"
 import { TopBar } from "../../components/TopBar/TopBar"
 import { getSupabase } from "../../lib/supabase"
-import { relativeSoilIndex } from "../../lib/soilIndex"
+import { relativeSoilIndex, type SoilCalibration } from "../../lib/soilIndex"
 import type { Screen } from "../../types/navigation"
 import "./TelemetryScreen.css"
 
@@ -25,11 +25,7 @@ interface Reading {
   signal: string
 }
 
-interface StationAccess {
-  node: string
-  dry_adc: number | null
-  wet_adc: number | null
-}
+type StationAccess = SoilCalibration & { node: string }
 
 type LoadState =
   | { status: "loading" }

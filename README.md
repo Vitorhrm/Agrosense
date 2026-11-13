@@ -447,7 +447,7 @@ O modem real responde às consultas AT com o valor consultado, sem `OK` adiciona
 Um único repositório mantém os contratos e as versões das quatro partes próximos. Crie branches para alterações, descreva o comportamento esperado e execute os testes relevantes antes de integrar mudanças.
 
 - Ao alterar o JSON, atualize Station, Access Point, documentação e futuros consumidores juntos.
-- Ao alterar `RadioLink.h`, mantenha suas cópias em `Station` e `Access Point` consistentes; cada sketch Arduino precisa ser autocontido.
+- Cada sketch Arduino é autocontido. O GitHub Actions confere a paridade de `LoraProvisioning.h`, `ProvisioningSettings.h`, `RadioLink.h` e `StationId.h` entre `Station/` e `AccessPoint/`. Atualize as duas cópias ao mudar uma regra do protocolo.
 - No aplicativo, mantenha a autenticação em `APP/frontend/src/features/auth` e reutilize o cliente de `APP/frontend/src/lib/supabase.ts`.
 - Preserve `package-lock.json` e use `npm ci` para instalações reproduzíveis.
 - Abra issues para registrar problema, comportamento esperado e passos de reprodução. Não inclua credenciais nos logs.

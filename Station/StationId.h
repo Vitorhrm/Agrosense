@@ -2,7 +2,7 @@
 
 #include <stddef.h>
 
-// Mantenha a mesma regra no Access Point e em backend/lib/domain.js.
+// O identificador precisa passar pela mesma validação na Station, no Access Point e no backend.
 constexpr bool isValidStationId(const char* id, size_t length) {
   if (!id || length == 0 || length > 24) return false;
 

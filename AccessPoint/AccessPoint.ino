@@ -59,7 +59,8 @@ bool handleCollection(JsonDocument& message, int rssiDbm, const char* eventId) {
   return cloudUploader.enqueue(message, eventId); // Copia o JSON e o identificador para envio HTTPS.
 }
 
-// Confirma a entrada na fila local, que ainda será enviada por HTTPS.
+// O ACK libera a coleta na Station assim que ela entra na fila em RAM do Access Point.
+// A persistência no banco acontece depois, quando o envio HTTPS é confirmado.
 char lastQueuedReceipt[25]{};
 char lastQueuedNetworkProof[25]{};
 

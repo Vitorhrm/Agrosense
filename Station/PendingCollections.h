@@ -60,6 +60,7 @@ class PendingCollections {
   };
 
   bool persist(const State& next) {
+    // Só troca o estado em memória depois que a gravação da fila inteira foi confirmada.
     if (storage_.putBytes("queue-v1", &next, sizeof(next)) != sizeof(next)) return false;
     state_ = next;
     return true;

@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react"
-import { relativeSoilIndex } from "../../lib/soilIndex"
+import { relativeSoilIndex, type SoilCalibration } from "../../lib/soilIndex"
 import { getSupabase } from "../../lib/supabase"
 
-type Station = { node: string; dry_adc: number | null; wet_adc: number | null }
+type Station = SoilCalibration & { node: string }
 type Reading = Parameters<typeof relativeSoilIndex>[0] & { received_at: string }
 const freshnessMs = 35 * 60 * 1000
 const numberFormat = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 2 })

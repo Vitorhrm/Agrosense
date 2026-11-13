@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from "react"
 import { AppShell } from "../../components/AppShell/AppShell"
 import { TopBar } from "../../components/TopBar/TopBar"
 import { getSupabase } from "../../lib/supabase"
+import { hasSoilCalibration, SOIL_ADC_MAX, type SoilCalibration } from "../../lib/soilIndex"
 import type { Screen } from "../../types/navigation"
 import { CropReference } from "./CropReference"
 import { AreaSoil } from "./AreaSoil"
@@ -28,7 +29,7 @@ const numberFields = [
 type Area = { id: string; soil_unit: "relative_index" | "vwc_pct" | null }
   & Record<typeof textFields[number][0], string | null>
   & Record<typeof numberFields[number][0], number | null>
-type Station = { node: string; area_id: string | null; dry_adc: number | null; wet_adc: number | null }
+type Station = SoilCalibration & { node: string; area_id: string | null }
 type Forecast = {
   fetched_at: string
   daily: { date: string; temp_min_c: number; temp_max_c: number; precipitation_probability_pct: number | null; precipitation_mm: number | null }[]
@@ -170,18 +171,20 @@ export function CropScreen({ go }: { go: (screen: Screen) => void }) {
   async function calibrate(event: FormEvent<HTMLFormElement>, node: string) {
     event.preventDefault()
     const values = new FormData(event.currentTarget)
-    const dry = values.get("dry_adc") === "" ? null : Number(values.get("dry_adc"))
-    const wet = values.get("wet_adc") === "" ? null : Number(values.get("wet_adc"))
+    const dry = values.get("dry_adc")
+    const wet = values.get("wet_adc")
+    const calibration = { dry_adc: dry ? Number(dry) : null, wet_adc: wet ? Number(wet) : null }
     setError("")
     setStatus("")
-    if ((dry === null) !== (wet === null) || (dry !== null && dry === wet)) {
-      setError("Informe dois valores ADC diferentes ou deixe ambos em branco.")
+    const reset = calibration.dry_adc === null && calibration.wet_adc === null
+    if (!reset && !hasSoilCalibration(calibration)) {
+      setError(`Informe dois valores ADC inteiros e diferentes entre 0 e ${SOIL_ADC_MAX}, ou deixe ambos em branco.`)
       return
     }
     setBusy(true)
     try {
       const { data, error: failure } = await getSupabase().from("agro_station_access")
-        .update({ dry_adc: dry, wet_adc: wet }).eq("node", node).select("node,area_id,dry_adc,wet_adc").single()
+        .update(calibration).eq("node", node).select("node,area_id,dry_adc,wet_adc").single()
       if (failure) throw failure
       setStations(items => items.map(item => item.node === node ? data : item))
       setStatus("Calibração salva.")
@@ -246,8 +249,8 @@ export function CropScreen({ go }: { go: (screen: Screen) => void }) {
             <form className="crop-config" onSubmit={event => void calibrate(event, station.node)}>
               <h3>Calibração do solo</h3>
               <p>Use médias medidas com esta sonda e este solo. O resultado é um índice relativo.</p>
-              <label>Referência seca (ADC)<input name="dry_adc" type="number" step="1" min="0" max="4095" defaultValue={station.dry_adc ?? ""} disabled={busy} /></label>
-              <label>Referência saturada (ADC)<input name="wet_adc" type="number" step="1" min="0" max="4095" defaultValue={station.wet_adc ?? ""} disabled={busy} /></label>
+              <label>Referência seca (ADC)<input name="dry_adc" type="number" step="1" min="0" max={SOIL_ADC_MAX} defaultValue={station.dry_adc ?? ""} disabled={busy} /></label>
+              <label>Referência saturada (ADC)<input name="wet_adc" type="number" step="1" min="0" max={SOIL_ADC_MAX} defaultValue={station.wet_adc ?? ""} disabled={busy} /></label>
               <button type="submit" disabled={busy}>Salvar calibração</button>
             </form>
           </div>)}

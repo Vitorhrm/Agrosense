@@ -6,7 +6,8 @@ import {generateSummary} from './ai.js';
 import {createForecast} from './forecast.js';
 
 const json = (body, status = 200, headers = {}) => Response.json(body, {status, headers: {'Cache-Control': 'no-store', ...headers}});
-async function body(request) {
+// Limita os bytes enquanto lê o corpo, inclusive quando Content-Length está ausente.
+async function readJsonBody(request) {
   if (!request.headers.get('content-type')?.includes('application/json')) throw new AppError(415, 'Use application/json.');
   const reader = request.body?.getReader();
   if (!reader) throw new AppError(400, 'Corpo vazio.');
@@ -40,7 +41,7 @@ export function createApp({env = process.env, storeFactory = createStore, ai = g
       if (route === '/api/login' && request.method === 'POST') {
         requireSameOrigin(request);
         if (!dashboardConfigured(env)) throw new AppError(503, 'Acesso ao painel ainda não configurado.');
-        const input = await body(request);
+        const input = await readJsonBody(request);
         if (!equalSecret(input.password, env.DASHBOARD_PASSWORD)) throw new AppError(401, 'Senha incorreta.');
         const secure = url.protocol === 'https:' ? '; Secure' : '';
         return json({ok: true}, 200, {'Set-Cookie': `agrosense_session=${sessionToken(env.SESSION_SECRET)}; HttpOnly; SameSite=Strict; Path=/; Max-Age=86400${secure}`});
@@ -51,7 +52,8 @@ export function createApp({env = process.env, storeFactory = createStore, ai = g
       }
       if (route === '/api/readings' && request.method === 'POST') {
         requireIngest(request, env);
-        const input = await body(request), reading = validateReading(input);
+        const input = await readJsonBody(request);
+        const reading = validateReading(input);
         const inserted = await storeFactory(env).insert({...reading, event_id: input.event_id || randomUUID()});
         return json({ok: true, duplicate: !inserted}, inserted ? 201 : 200);
       }
@@ -66,8 +68,7 @@ export function createApp({env = process.env, storeFactory = createStore, ai = g
         return json({node, hours, readings: await store.series(node, hours), summary: await store.summary(node)});
       }
       if (route === '/api/summary' && request.method === 'POST') {
-        requireSameOrigin(request);
-        const node = validateNode((await body(request)).node);
+        const node = validateNode((await readJsonBody(request)).node);
         const readings = await store.recent(node);
         if (!readings.length) throw new AppError(409, 'A estação ainda não possui leituras.');
         const previous = await store.summary(node), latest = readings.at(-1).received_at;

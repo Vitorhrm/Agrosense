@@ -39,6 +39,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: |
+          # Cada sketch é autocontido. Os cabeçalhos do protocolo devem evoluir juntos.
+          for header in LoraProvisioning.h ProvisioningSettings.h RadioLink.h StationId.h; do
+            diff -u --strip-trailing-cr "Station/$header" "AccessPoint/$header"
+          done
           g++ -std=c++14 -fsyntax-only tests/soil-calibration.test.cpp
           for sketch in Station AccessPoint; do
             g++ -std=c++14 -fsyntax-only -I"$sketch" tests/station-id.test.cpp tests/provisioning.test.cpp
