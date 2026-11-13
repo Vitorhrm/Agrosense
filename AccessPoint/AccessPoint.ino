@@ -63,6 +63,22 @@ bool handleCollection(JsonDocument& message, int rssiDbm, const char* eventId) {
 char lastQueuedReceipt[25]{};
 char lastQueuedNetworkProof[25]{};
 
+// Identidade da coleta independe da senha e do modo de pareamento.
+bool collectionEventId(JsonString node, JsonString sample, char (&eventId)[37]) {
+  if (!isValidStationId(node.c_str(), node.size()) || !LoraAuth::hex(sample, 16)) return false;
+  char canonical[48];
+  snprintf(canonical, sizeof(canonical), "%s|%s", node.c_str(), sample.c_str());
+  const auto* algorithm = mbedtls_md_info_from_type(MBEDTLS_MD_SHA256);
+  uint8_t digest[32];
+  if (!algorithm || mbedtls_md(algorithm, reinterpret_cast<const uint8_t*>(canonical),
+      strlen(canonical), digest) != 0) return false;
+  char hex[33];
+  LoraAuth::encode(digest, 16, hex);
+  snprintf(eventId, sizeof(eventId), "%.8s-%.4s-%.4s-%.4s-%.12s",
+      hex, hex + 8, hex + 12, hex + 16, hex + 20);
+  return true;
+}
+
 bool alreadyQueued(const char* receipt, const ProvisionedLora& network) {
   if (strcmp(lastQueuedReceipt, receipt) != 0) return false;
   if (!network.enabled()) return lastQueuedNetworkProof[0] == 0;
@@ -135,15 +151,20 @@ void loop() {
       const JsonString request = message["b"].as<JsonString>();
       if (!LoraAuth::hex(request, 16)) {
         handleCollection(message, receivedRssi, nullptr); // Compatibilidade com Station antiga.
-      } else if (alreadyQueued(request.c_str(), network) || handleCollection(message, receivedRssi, nullptr)) {
-        sendCollectionAck(request.c_str(), network);
+      } else {
+        char eventId[37];
+        if (collectionEventId(message["node"].as<JsonString>(), request, eventId) &&
+            (alreadyQueued(request.c_str(), network) || handleCollection(message, receivedRssi, eventId))) {
+          sendCollectionAck(request.c_str(), network);
+        }
       }
     } else {
       JsonDocument reading;
       char eventId[37]{};
       if (LoraAuth::decodeReading(message, network, reading, eventId)) {
         const char* receipt = message["h"].as<const char*>();
-        if (alreadyQueued(receipt, network) || handleCollection(reading, receivedRssi, eventId)) {
+        if (collectionEventId(message["node"].as<JsonString>(), message["b"].as<JsonString>(), eventId) &&
+            (alreadyQueued(receipt, network) || handleCollection(reading, receivedRssi, eventId))) {
           sendCollectionAck(receipt, network);
         }
       }
